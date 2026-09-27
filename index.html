@@ -559,10 +559,10 @@ function rebuildOcc(){occ.fill(null);for(const b of S.b){const s=TYPES[b.t].size
 function canPlace(t,x,y,ignore){
   const s=TYPES[t].size;
   if(x<MARGIN||y<MARGIN||x+s>N-MARGIN||y+s>N-MARGIN)return false;
-  for(let j=0;j<s;j++)for(let i=0;i<s;i++){const o=occ[(y+j)*N+x+i];if(o&&o!==ignore)return false;}
+  for(let j=0;j<s;j++)for(let i=0;i<s;i++){const o=occ[(y+j)*N+x+i];if(o&&o!==ignore&&!(ignore instanceof Set&&ignore.has(o)))return false;}
   return true;
 }
-function wallLive(x,y){if(x<0||y<0||x>=N||y>=N)return false;const o=occ[y*N+x];return !!(o&&o.t==='wall'&&!o.dead);}
+function wallLive(x,y){if(x<0||y<0||x>=N||y>=N)return false;if(placing&&placing.pset&&placing.pset.has(x+','+y))return true;const o=occ[y*N+x];return !!(o&&o.t==='wall'&&!o.dead);}
 
 // ================= drawing primitives =================
 // PICK: when set, every shape is filled with this flat color (used for pixel-accurate tapping)
@@ -1285,7 +1285,7 @@ function drawBuildingRaw(b){
 }
 function sprKey(b,qs){
   let k=b.t+'|'+b.lvl+'|'+b.bk+'|'+b.x+','+b.y+'|'+qs+'|'+(raid?1:0)+'|'+(b.sprung?1:0);
-  if(b.t==='wall')k+='|'+wallLive(b.x+1,b.y)+wallLive(b.x,b.y+1);
+  if(b.t==='wall')k+='|'+(b.conn?b.conn.join(''):''+wallLive(b.x+1,b.y)+wallLive(b.x,b.y+1));
   else if(b.t==='hut')k+='|'+S.b.some(o=>o.bu);
   else if(b.t==='goldvault')k+='|'+Math.round(Math.min(1,S.gold/cap('gold'))*20);
   else if(b.t==='crystalvault')k+='|'+Math.round(Math.min(1,S.crystal/cap('crystal'))*20);
@@ -1964,9 +1964,10 @@ function render(){
   drawGroundLayer();const quick=ftAvg<14&&!lowGfx;sprBudget=lowGfx?4:quick?24:10;ANIM_MS=quick?40:66;
   const editing=!!placing||(gesture&&gesture.type==='move');
   if(editing)drawGridLines();
-  if(selected&&!selected.dead){const s=TYPES[selected.t].size,pulse=0.55+Math.sin(tSec*5)*0.25;
-    const ok=!(gesture&&gesture.type==='move')||canPlace(selected.t,selected.x,selected.y,selected);
-    footprint(selected.x,selected.y,s,gesture&&gesture.type==='move'?(ok?'rgba(90,230,90,.35)':'rgba(240,70,60,.45)'):null,`rgba(255,255,255,${pulse})`,3/cam.z);}
+  if(selected&&!selected.dead){const pulse=0.55+Math.sin(tSec*5)*0.25,moving=gesture&&gesture.type==='move';
+    const grp=selRow&&selRow.length>1?selRow:[selected],ig=new Set(grp),ok=!moving||grp.every(w=>canPlace(w.t,w.x,w.y,ig));
+    for(const w of grp)footprint(w.x,w.y,TYPES[w.t].size,moving?(ok?'rgba(90,230,90,.35)':'rgba(240,70,60,.45)'):(grp.length>1?'rgba(255,255,255,.12)':null),`rgba(255,255,255,${pulse})`,3/cam.z);}
+  if(placing&&placing.wall)for(const [x,y] of placing.pend)footprint(x,y,1,'rgba(90,230,90,.3)',null);
   let ghost=null;
   if(placing&&!placing.wall){const s=TYPES[placing.t].size,ok=canPlace(placing.t,placing.x,placing.y);
     footprint(placing.x,placing.y,s,ok?'rgba(90,230,90,.38)':'rgba(240,70,60,.45)',ok?'#b6ffa0':'#ffb0a0',2/cam.z);
@@ -1975,8 +1976,9 @@ function render(){
     ellipse(q[0],q[1],z.r*HW*SQ2,z.r*HH*SQ2,'rgba(24,16,30,.78)');ellipse(q[0]-z.r*8,q[1]-z.r*4,z.r*10,z.r*4,'rgba(200,160,255,.18)');g.globalAlpha=1;}}
   drawCommandMarks();
   const objs=[];
-  const mv=gesture&&gesture.type==='move'?gesture.b:null;
-  for(const b of S.b)objs.push([b===mv?1e6:b.x+b.y+TYPES[b.t].size,TYPES[b.t].size,0,b]);
+  const mv=gesture&&gesture.type==='move'?gesture.b:null,mvs=mv?new Set(gesture.group||[mv]):null;
+  for(const b of S.b)objs.push([(mvs&&mvs.has(b)?1e6:0)+b.x+b.y+TYPES[b.t].size,TYPES[b.t].size,0,b]);
+  if(placing&&placing.wall)for(const [x,y] of placing.pend)objs.push([x+y+1,1,0,{t:'wall',x,y,lvl:1,id:-1,ghost:true,conn:[wallLive(x+1,y),wallLive(x,y+1)]}]);
   if(ghost)objs.push([1e6,TYPES[ghost.t].size,0,ghost]);
   if(raid)for(const u of raid.units)objs.push([u.x+u.y,0,1,u]);
   for(const tr of troops)if(!tr.dead)objs.push([tr.x+tr.y,0,2,tr]);
@@ -1996,7 +1998,7 @@ function render(){
 function fadeSet(mv){
   const fade=new Set();
   if(selected&&!selected.dead&&selected!==mv)for(const b of S.b)if(hides(b,selected))fade.add(b);
-  if(placing&&placing.wall){const walls=S.b.filter(w=>w.t==='wall'&&!w.dead);
+  if(placing&&placing.wall){const walls=S.b.filter(w=>w.t==='wall'&&!w.dead).concat(placing.pend.map(([x,y])=>({t:'wall',x,y,lvl:1})));
     for(const b of S.b){if(b.t==='wall'||b.dead||TYPES[b.t].h<40)continue;for(const w of walls)if(hides(b,w)){fade.add(b);break;}}}
   return fade;
 }
@@ -2080,7 +2082,7 @@ function startPlace(t){
   if(raid)return;
   const why=buildReason(t);if(why){toast(why);snd('error');return;}
   closeShop();select(null);
-  if(t==='wall'){placing={t,wall:true,last:null};showPlaceBar();return;}
+  if(t==='wall'){placing={t,wall:true,last:null,pend:[],pset:new Set()};showPlaceBar();return;}
   const s=TYPES[t].size,c=toGrid(W/2,H/2);let x=Math.round(c.x-s/2),y=Math.round(c.y-s/2);
   let found=false;
   for(let r=0;r<16&&!found;r++)for(let dy=-r;dy<=r&&!found;dy++)for(let dx=-r;dx<=r&&!found;dx++){
@@ -2089,14 +2091,24 @@ function startPlace(t){
 }
 function showPlaceBar(){
   const T=TYPES[placing.t];
-  $('placeHint').innerHTML=placing.wall?`Tap or drag to place walls<br>${RI.gold} ${fmt(T.cost[0])} each · move the map with two fingers or right-drag`:`Drag or tap to position the ${T.name}<br>${RI[T.res]} ${fmt(costOf(placing.t,1))}`;
-  $('placeNo').hidden=!!placing.wall;
+  if(placing.wall)wallHint();else $('placeHint').innerHTML=`Drag or tap to position the ${T.name}<br>${RI[T.res]} ${fmt(costOf(placing.t,1))}`;
+  $('placeNo').hidden=false;
   $('place').hidden=false;setMode();
 }
+function wallHint(){const n=placing.pend.length,c=TYPES.wall.cost[0];
+  $('placeHint').innerHTML=n?`<b>${n} wall${n>1?'s':''}</b> planned · ${RI.gold} ${fmt(n*c)}<br>Tap ✓ to build. Drag from a planned wall to erase.`:`Tap or drag to plan walls (${RI.gold} ${fmt(c)} each)<br>Move the map with two fingers or right-drag`;}
 function cancelPlace(){if(!placing)return;placing=null;$('place').hidden=true;setMode();}
 function confirmPlace(){
   if(!placing)return;
-  if(placing.wall){cancelPlace();return;}
+  if(placing.wall){
+    const pend=placing.pend.filter(([x,y])=>canPlace('wall',x,y)),c=TYPES.wall.cost[0];
+    if(!pend.length){cancelPlace();return;}
+    if(count('wall')+pend.length>limit('wall')){toast(`That's more than your wall limit (${limit('wall')})`);snd('error');return;}
+    if(S.gold<pend.length*c){toast(`Not enough gold: ${pend.length} walls cost ${fmt(pend.length*c)}`);snd('error');return;}
+    S.gold-=pend.length*c;placing=null;
+    for(const [x,y] of pend){const b=mk('wall',x,y);initRt(b);S.b.push(b);puff(x+.5,y+.5,1);}
+    rebuildOcc();snd('place');toast(`Built ${pend.length} wall${pend.length>1?'s':''}`);
+    $('place').hidden=true;setMode();saveSoon();return;}
   const t=placing.t,T=TYPES[t];
   if(!canPlace(t,placing.x,placing.y)){toast('That spot is blocked. Move it to a clear space.');return;}
   const why=buildReason(t);if(why){toast(why);return;}
@@ -2110,16 +2122,18 @@ function confirmPlace(){
 function paintAt(gp){
   const tx=Math.floor(gp.x),ty=Math.floor(gp.y);
   let l=placing.last;
-  if(!l){tryWall(tx,ty);placing.last=[tx,ty];return;}
+  const f=placing.erase?eraseWall:tryWall;
+  if(!l){f(tx,ty);placing.last=[tx,ty];wallHint();return;}
   let [cx,cy]=l;let guard=0;
-  while((cx!==tx||cy!==ty)&&guard++<64){if(Math.abs(tx-cx)>=Math.abs(ty-cy))cx+=Math.sign(tx-cx);else cy+=Math.sign(ty-cy);tryWall(cx,cy);}
-  placing.last=[tx,ty];
+  while((cx!==tx||cy!==ty)&&guard++<64){if(Math.abs(tx-cx)>=Math.abs(ty-cy))cx+=Math.sign(tx-cx);else cy+=Math.sign(ty-cy);f(cx,cy);}
+  placing.last=[tx,ty];wallHint();
 }
+function eraseWall(x,y){const k=x+','+y;if(!placing.pset.has(k))return;placing.pset.delete(k);placing.pend=placing.pend.filter(p=>p[0]!==x||p[1]!==y);}
 function tryWall(x,y){
-  if(!canPlace('wall',x,y))return;
-  if(count('wall')>=limit('wall')){toast(`Wall limit reached (${limit('wall')}). Upgrade your Town Hall for more.`);return;}
-  const c=TYPES.wall.cost[0];if(S.gold<c){toast('Not enough gold for more walls');return;}
-  S.gold-=c;const b=mk('wall',x,y);initRt(b);S.b.push(b);occ[y*N+x]=b;puff(x+.5,y+.5,2);snd('wall',x,y);saveSoon();
+  const k=x+','+y;if(placing.pset.has(k)||!canPlace('wall',x,y))return;
+  if(count('wall')+placing.pend.length>=limit('wall')){toast(`Wall limit reached (${limit('wall')}). Upgrade your Town Hall for more.`);return;}
+  const c=TYPES.wall.cost[0];if(S.gold<c*(placing.pend.length+1)){toast('Not enough gold for more walls');return;}
+  placing.pend.push([x,y]);placing.pset.add(k);snd('wall',x,y);
 }
 
 // ================= input =================
@@ -2155,7 +2169,7 @@ function stackAt(sx,sy){
 }
 const isHidden=b=>!!b&&!b.dead&&S.b.some(o=>hides(o,b));
 function startPinch(){const [a,b]=[...ptrs.values()];pinch={d0:Math.hypot(a.x-b.x,a.y-b.y)||1,z0:cam.z,mx:(a.x+b.x)/2,my:(a.y+b.y)/2,wx:((a.x+b.x)/2-cam.x)/cam.z,wy:((a.y+b.y)/2-cam.y)/cam.z};
-  if(gesture&&gesture.type==='move'){gesture.b.x=gesture.orig[0];gesture.b.y=gesture.orig[1];}gesture=null;}
+  if(gesture&&gesture.type==='move'){if(gesture.group)gesture.group.forEach((w,j)=>{w.x=gesture.origs[j][0];w.y=gesture.origs[j][1];delete w.conn;});else{gesture.b.x=gesture.orig[0];gesture.b.y=gesture.orig[1];}}gesture=null;}
 cv.addEventListener('pointerdown',e=>{
   if(!$('modal').hidden)return;
   if(shopOpen){closeShop();return;}
@@ -2167,10 +2181,13 @@ cv.addEventListener('pointerdown',e=>{
   gesture={type:'pending',sx,sy,lx:sx,ly:sy,moved:false};
   if(e.pointerType==='mouse'&&e.button!==0){gesture.type='pan';gesture.moved=true;return;}
   if(placing){
-    if(placing.wall){gesture.type='paint';placing.last=null;paintAt(gp);}
+    if(placing.wall){gesture.type='paint';placing.last=null;placing.erase=placing.pset.has(Math.floor(gp.x)+','+Math.floor(gp.y));paintAt(gp);}
     else{const s=TYPES[placing.t].size;if(gp.x>=placing.x-0.5&&gp.x<=placing.x+s+0.5&&gp.y>=placing.y-0.5&&gp.y<=placing.y+s+0.5){gesture.type='ghost';gesture.off=[gp.x-placing.x,gp.y-placing.y];}}
   }else if(!raid&&!cmd.open&&selected&&!selected.dead&&(pickAt(sx,sy,selected)===selected||groundAt(sx,sy)===selected)){
     gesture.type='movePending';gesture.b=selected;gesture.orig=[selected.x,selected.y];gesture.off=[gp.x-selected.x,gp.y-selected.y];}
+  else if(!raid&&!cmd.open&&selRow&&selRow.length>1){const hit=selRow.find(w=>groundAt(sx,sy)===w||pickAt(sx,sy,w)===w);
+    if(hit){gesture.type='movePending';gesture.b=hit;gesture.orig=[hit.x,hit.y];gesture.off=[gp.x-hit.x,gp.y-hit.y];}}
+  if(gesture.type==='movePending'&&selRow&&selRow.length>1&&selRow.includes(gesture.b)){gesture.group=selRow;gesture.origs=selRow.map(w=>[w.x,w.y]);}
 });
 cv.addEventListener('pointermove',e=>{
   const p=ptrs.get(e.pointerId);if(!p)return;p.x=e.clientX;p.y=e.clientY;
@@ -2187,7 +2204,14 @@ cv.addEventListener('pointermove',e=>{
     case 'ghost':{const s=TYPES[placing.t].size;placing.x=clamp(Math.round(gp.x-gesture.off[0]),MARGIN,N-MARGIN-s);placing.y=clamp(Math.round(gp.y-gesture.off[1]),MARGIN,N-MARGIN-s);break;}
     case 'movePending':if(!gesture.moved)break;gesture.type='move';
     // falls through
-    case 'move':{const b=gesture.b,s=TYPES[b.t].size;b.x=clamp(Math.round(gp.x-gesture.off[0]),MARGIN,N-MARGIN-s);b.y=clamp(Math.round(gp.y-gesture.off[1]),MARGIN,N-MARGIN-s);break;}
+    case 'move':{const b=gesture.b,s=TYPES[b.t].size;
+      if(gesture.group){const G=gesture.group,O=gesture.origs,i=G.indexOf(b);
+        let dx=Math.round(gp.x-gesture.off[0])-O[i][0],dy=Math.round(gp.y-gesture.off[1])-O[i][1];
+        const xs=O.map(o=>o[0]),ys=O.map(o=>o[1]);
+        dx=clamp(dx,MARGIN-Math.min(...xs),N-MARGIN-1-Math.max(...xs));dy=clamp(dy,MARGIN-Math.min(...ys),N-MARGIN-1-Math.max(...ys));
+        G.forEach((w,j)=>{w.x=O[j][0]+dx;w.y=O[j][1]+dy;});
+        const at=new Set(G.map(w=>w.x+','+w.y));for(const w of G)w.conn=[at.has((w.x+1)+','+w.y),at.has(w.x+','+(w.y+1))];break;}
+      b.x=clamp(Math.round(gp.x-gesture.off[0]),MARGIN,N-MARGIN-s);b.y=clamp(Math.round(gp.y-gesture.off[1]),MARGIN,N-MARGIN-s);break;}
     case 'paint':paintAt(gp);break;
   }
   gesture.lx=sx;gesture.ly=sy;
@@ -2196,6 +2220,10 @@ function endPointer(e,cancel){
   if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);cv.style.cursor='grab';
   if(pinch){if(ptrs.size<2)pinch=null;gesture=null;return;}
   const G=gesture;gesture=null;if(!G)return;
+  if(G.type==='move'&&G.group){const ig=new Set(G.group),ok=!cancel&&G.group.every(w=>canPlace('wall',w.x,w.y,ig));
+    for(const w of G.group)delete w.conn;
+    if(ok){rebuildOcc();saveSoon();snd('place');}else{G.group.forEach((w,j)=>{w.x=G.origs[j][0];w.y=G.origs[j][1];});if(!cancel)toast('That spot is blocked');}
+    selSig='';return;}
   if(G.type==='move'){const b=G.b;
     if(!cancel&&canPlace(b.t,b.x,b.y,b)){rebuildOcc();saveSoon();if(TYPES[b.t].cat==='army')for(const tr of troops)tr.post=null;}
     else{b.x=G.orig[0];b.y=G.orig[1];if(!cancel)toast('That spot is blocked');}return;}
@@ -2227,7 +2255,7 @@ addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('modal').hidden)return
 
 // ================= UI =================
 let selected=null,selSig='',removeArm=-1e9,shopOpen=false,shopTab='def',shopSig='';
-function select(b){if(b!==selected)selStack=false;selected=b||null;removeArm=-1e9;selSig='';renderSel();}
+function select(b){if(b!==selected){selStack=false;selRow=null;}selected=b||null;removeArm=-1e9;selSig='';renderSel();}
 function setMode(){
   const r=!!raid,p=!!placing;
   $('shopBtn').hidden=r||p;$('raidBtn').hidden=r||p;$('raidCtl').hidden=!r;$('raidHud').hidden=!r;
@@ -2255,9 +2283,31 @@ function statList(b){
   if(b.t==='hut'){const bl=builders();o.push(['Builders free',bl.free+' / '+bl.total]);}
   return o;
 }
+let selRow=null,rowAxis=0;
+function wallRun(b,axis){const dx=axis?0:1,dy=axis?1:0,out=[b];
+  for(const d of [1,-1]){let x=b.x+dx*d,y=b.y+dy*d;for(;;){if(x<0||y<0||x>=N||y>=N)break;const o=occ[y*N+x];if(!o||o.t!=='wall'||o.dead||o.x!==x||o.y!==y)break;if(d>0)out.push(o);else out.unshift(o);x+=dx*d;y+=dy*d;}}
+  return out;}
+function rowPanel(b){
+  const T=TYPES.wall,n=selRow.length,cap=lvlCap('wall'),ups=selRow.filter(w=>w.lvl<T.maxLvl&&w.lvl<cap);
+  const upCost=ups.reduce((a,w)=>a+T.cost[w.lvl],0),refund=selRow.reduce((a,w)=>a+Math.floor(T.cost[w.lvl-1]*0.5),0),other=wallRun(b,1-rowAxis).length>1;
+  const lv=[...new Set(selRow.map(w=>w.lvl))].sort((p,q)=>p-q),armed=performance.now()-removeArm<2500;
+  let h=`<div class="sel-top"><canvas class="pv-cur" width="136" height="100" data-pv="wall" data-lvl="${b.lvl}"></canvas><div class="sel-info">
+    <div class="sel-head"><div class="sel-title d sh">Wall row<span class="lvl">${n} walls</span></div><button class="x" data-act="close" aria-label="Close">✕</button></div>
+    <div class="stats"><span>Levels <b>${lv.length>1?lv[0]+'–'+lv[lv.length-1]:lv[0]}</b></span><span>HP each <b>${fmt(T.hp[lv[0]-1])}${lv.length>1?'+':''}</b></span></div></div></div>`;
+  if(!raid){
+    h+=`<div class="acts">
+      <button class="btn" data-act="uprow" ${!ups.length||S.gold<T.cost[ups[0].lvl]?'disabled':''}>Upgrade row<small>${ups.length?`${RI.gold} ${fmt(upCost)} for ${ups.length}`:'All at max for now'}</small></button>
+      <button class="btn red" data-act="rmrow">${armed?'Tap to confirm':'Remove row'}<small>refund ${RI.gold} ${fmt(refund)}</small></button></div>
+      <div class="acts" style="margin-top:8px">${other?'<button class="btn blue" data-act="flip">Switch direction</button>':''}<button class="btn plain" data-act="single">Just this wall</button></div>
+      <div class="hint">Drag any wall in the row to move them all together.</div>`;
+  }
+  return h;
+}
 function renderSel(){
   const el=$('sel'),b=selected;
   if(!b||!S.b.includes(b)||placing){if(!el.hidden)el.hidden=true;selSig='';return;}
+  if(selRow&&!selRow.every(w=>S.b.includes(w)&&!w.dead))selRow=null;
+  if(selRow&&selRow.length>1&&b.t==='wall'){const h=rowPanel(b);if(h!==selSig){selSig=h;el.innerHTML=h;el.querySelectorAll('canvas[data-pv]').forEach(c=>drawThumb(c,c.dataset.pv,+c.dataset.lvl));}el.hidden=false;return;}
   const T=TYPES[b.t];
   let h=`<div class="sel-top"><canvas class="pv-cur" width="136" height="100" data-pv="${b.t}" data-lvl="${b.lvl}"></canvas><div class="sel-info">
     <div class="sel-head"><div class="sel-title d sh">${T.name}<span class="lvl">Lv ${b.lvl}</span></div><button class="x" data-act="close" aria-label="Close">✕</button></div>
@@ -2273,6 +2323,7 @@ function renderSel(){
     if(b.lvl<T.maxLvl&&!b.bu){const why=upReason(b),tm=timeOf(b.t,b.lvl+1);
       acts.push(`<button class="btn up" data-act="up" ${why?'disabled':''}><canvas class="pv" width="112" height="80" data-pv="${b.t}" data-lvl="${b.lvl+1}"></canvas><span class="bt">Upgrade to ${b.lvl+1}<small>${RI[T.res]} ${fmt(T.cost[b.lvl])}${tm?' · '+fmtTime(tm):''}</small></span></button>`);
       if(why)note=why;}
+    if(b.t==='wall'&&(wallRun(b,0).length>1||wallRun(b,1).length>1))acts.push(`<button class="btn blue" data-act="row">Select row<small>${Math.max(wallRun(b,0).length,wallRun(b,1).length)} walls</small></button>`);
     if(b.t==='wall'&&b.lvl<T.maxLvl){const n=S.b.filter(w=>w.t==='wall'&&w.lvl===b.lvl).length;
       if(n>1)acts.push(`<button class="btn blue" data-act="upall" ${upReason(b)&&!/more gold/.test(upReason(b))?'disabled':''}>Upgrade all ${n}<small>${RI.gold} ${fmt(T.cost[b.lvl])} each</small></button>`);}
     if(b.t!=='hall'&&b.t!=='hut'){const refund=Math.floor(T.cost[b.lvl-1]*0.5),armed=performance.now()-removeArm<2500;
@@ -2304,6 +2355,15 @@ $('sel').addEventListener('click',e=>{
       const list=S.b.filter(w=>w.t==='wall'&&w.lvl===lv).sort((p,q)=>Math.hypot(p.x-b.x,p.y-b.y)-Math.hypot(q.x-b.x,q.y-b.y));let n=0;
       for(const w of list){if(S.gold<c)break;S.gold-=c;w.lvl++;w.hp=maxHp(w);n++;levelUpFx(w,false);}
       toast(n?`Upgraded ${n} wall${n>1?'s':''} to level ${lv+1}`:'Not enough gold');saveSoon();break;}
+    case 'row':{const a=wallRun(b,0),c=wallRun(b,1);rowAxis=a.length>=c.length?0:1;selRow=rowAxis?c:a;break;}
+    case 'flip':{rowAxis=1-rowAxis;const r=wallRun(b,rowAxis);if(r.length>1)selRow=r;else rowAxis=1-rowAxis;break;}
+    case 'single':selRow=null;break;
+    case 'uprow':{const cap=lvlCap('wall'),list=selRow.filter(w=>w.lvl<T.maxLvl&&w.lvl<cap).sort((p,q)=>p.lvl-q.lvl);let n=0;
+      for(const w of list){const c=T.cost[w.lvl];if(S.gold<c)break;S.gold-=c;w.lvl++;w.hp=maxHp(w);n++;levelUpFx(w,false);}
+      if(n){snd('levelup');toast(`Upgraded ${n} wall${n>1?'s':''}`);}else{toast('Not enough gold');snd('error');}saveSoon();break;}
+    case 'rmrow':{if(performance.now()-removeArm>2500){removeArm=performance.now();break;}
+      let r=0;for(const w of selRow){r+=Math.floor(T.cost[w.lvl-1]*0.5);S.b.splice(S.b.indexOf(w),1);puff(w.x+.5,w.y+.5,2);}
+      S.gold=Math.min(cap('gold'),S.gold+r);const n=selRow.length;selRow=null;rebuildOcc();snd('rubble');select(null);toast(`Removed ${n} walls`);saveSoon();break;}
     case 'remove':{if(performance.now()-removeArm>2500){removeArm=performance.now();break;}
       S[T.res]=Math.min(cap(T.res),S[T.res]+Math.floor(T.cost[b.lvl-1]*0.5));S.b.splice(S.b.indexOf(b),1);rebuildOcc();syncTroops();
       const [cx,cy]=centerOf(b);puff(cx,cy,6);select(null);saveSoon();break;}
@@ -2489,7 +2549,7 @@ $('menuBtn').addEventListener('click',()=>{
       <button class="btn red" data-m="reset">Reset base</button>
       ${DEV.on?'<button class="btn plain" data-m="dev">Developer tools</button>':''}
       <button class="btn" data-m="close">Close</button></div>
-    <p class="ver" data-m="ver">Bulwark v2.1</p>`,{
+    <p class="ver" data-m="ver">Bulwark v2.2</p>`,{
     center:()=>{centerCam();hideModal();},help:()=>showWelcome(),close:hideModal,
     sfx:(el)=>{AUD.sfx=!AUD.sfx;audioSave();el.className='btn '+(AUD.sfx?'':'plain');el.innerHTML=`Sound<small>${AUD.sfx?'On':'Off'}</small>`;},
     music:(el)=>{AUD.music=!AUD.music;audioSave();el.className='btn '+(AUD.music?'':'plain');el.innerHTML=`Music<small>${AUD.music?'On':'Off'}</small>`;},

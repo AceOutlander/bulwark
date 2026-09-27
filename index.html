@@ -191,6 +191,8 @@ button:focus-visible{outline:3px solid #ffe07a;outline-offset:2px}
 .lb-meta{font-size:11.5px;color:var(--ink-dim)}
 .lb-score{font-family:'Lilita One',system-ui,sans-serif;font-size:15px;color:#ffd65c}
 .lb-note{font-size:13px;color:var(--ink-dim);font-weight:700;padding:10px;background:rgba(0,0,0,.2);border-radius:10px}
+.lb-remove{display:block;margin:12px auto 0;padding:8px 12px;font-size:13px;font-weight:800;color:#ff8f7d;text-decoration:underline;text-underline-offset:3px}
+.lb-off{font-size:12.5px;color:var(--ink-dim);font-weight:800;margin:0 0 10px}
 .lb-dev{margin-top:10px;font-size:12.5px;color:var(--ink-dim);text-align:left}
 .lb-dev summary{cursor:pointer;padding:4px 0}
 /* settings */
@@ -570,7 +572,7 @@ function load(){
     d.posts=d.posts&&typeof d.posts==='object'?d.posts:{};for(const t in d.posts)if(!TROOPS[t]||!Array.isArray(d.posts[t]))delete d.posts[t];
     d.tlvl=d.tlvl&&typeof d.tlvl==='object'?d.tlvl:{};for(const t in d.tlvl)if(!TROOPS[t])delete d.tlvl[t];
     if(!d.research||!TROOPS[d.research.t])d.research=null;
-    if(!d.player||typeof d.player!=='object')d.player={name:'',id:'',token:''};d.player.name=String(d.player.name||'').slice(0,16);d.devUsed=!!d.devUsed;
+    if(!d.player||typeof d.player!=='object')d.player={name:'',id:'',token:''};d.player.optOut=!!d.player.optOut;if(d.player.submitted==null)d.player.submitted=!!d.player.id;d.player.name=String(d.player.name||'').slice(0,16);d.devUsed=!!d.devUsed;
     S=d;
     const el=Math.max(0,(Date.now()-(d.last||Date.now()))/1000);
     for(const b of S.b){const T=TYPES[b.t];if(T.rate&&!b.bk)b.st=Math.min(T.store[b.lvl-1],(b.st||0)+T.rate[b.lvl-1]*el);b.st=b.st||0;}
@@ -1812,7 +1814,7 @@ function endRaid(quit){
   }
   const t0=S.trophies;S.trophies=Math.max(0,S.trophies+dT);dT=S.trophies-t0;
   setTimeout(()=>snd(quit&&left>0||stars?'lose':'win'),500);
-  if(lbPlayer().name.length>=2&&lbStatus!=='offline')setTimeout(()=>lbSubmit(true),1500);
+  {const lp=lbPlayer();if(lp.name.length>=2&&lp.submitted&&!lp.optOut&&lbStatus!=='offline')setTimeout(()=>lbSubmit(true),1500);}
   const dg=Math.round(S.gold-g0),dc=Math.round(S.crystal-c0);
   const sg=v=>(v>=0?'+':'−')+fmt(Math.abs(v));
   const lostTxt=Object.entries(R.lost).filter(e=>e[1]>0).map(([t,n])=>`${n} ${TROOPS[t].name}${n>1?'s':''}`).join(', ');
@@ -2685,7 +2687,7 @@ function openSettings(){
       ${navRow('rreset','↩️','Reset raid levels','Go back to raid level 1')}
       ${navRow('reset','🗑','Reset base','Erase everything and start over','red')}
     </div>
-    <div class="set-foot"><p class="ver" data-m="ver">Bulwark v2.6 · saved on this device</p></div>`,{
+    <div class="set-foot"><p class="ver" data-m="ver">Bulwark v2.7 · saved on this device</p></div>`,{
     _cls:'set-box',
     close:hideModal,
     lb:()=>openLeaderboard(),
@@ -2826,10 +2828,24 @@ async function lbSubmit(quiet){
   if(name.length<2){if(!quiet)toast('Enter a name first');return;}
   if(lbBusy)return;lbBusy=true;lbRender();
   try{const r=await lbFetch('/submit',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:p.id,token:p.token,name,dev:!!(S.devUsed||DEV.on),base:baseSnapshot()})});
-    if(r&&r.ok){lbLast=r;if(!quiet){snd('levelup');toast(r.rank?`You're #${r.rank} with ${fmt(r.best)} points`:'Score saved');}await lbLoad();}
+    if(r&&r.ok){lbLast=r;p.submitted=true;p.optOut=false;saveSoon();if(!quiet){snd('levelup');toast(r.rank?`You're #${r.rank} with ${fmt(r.best)} points`:'Score saved');}await lbLoad();}
     else{lbStatus='ok';if(!quiet){toast(r&&r.error?r.error:'Could not save your score');snd('error');}}
   }catch(e){lbStatus='offline';if(!quiet)toast('Leaderboard server not reachable');}
   lbBusy=false;lbRender();
+}
+async function lbRemove(){
+  const p=lbPlayer();if(!p.id){toast('You are not on the leaderboard');return;}
+  try{const r=await lbFetch('/remove',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:p.id,token:p.token})});
+    if(r&&r.ok){p.optOut=true;p.submitted=false;lbLast=null;saveSoon();snd('click');toast('You have been removed from the leaderboard');await lbLoad();}
+    else if(r&&r.error==='not found'){toast('Your leaderboard server needs the latest worker.js first');snd('error');}
+    else{toast(r&&r.error?r.error:'Could not remove you right now');snd('error');}
+  }catch(e){toast('Leaderboard server not reachable');}
+  openLeaderboard();
+}
+function lbRemovePrompt(){
+  showModal(`<h2 class="sh">Leave the leaderboard?</h2><p>Your name and score are deleted from the leaderboard straight away. Your base in the game isn't affected, and you can join again any time by tapping <b>Submit</b>.</p>
+    <div class="tips" style="gap:10px;margin-top:14px"><button class="btn" data-m="no">Keep me on it</button><button class="btn red" data-m="yes">Remove me</button></div>`,
+    {_cls:'confirm-box',no:()=>openLeaderboard(),yes:()=>lbRemove()});
 }
 function openLeaderboard(){if(raid)return;closeShop();closeTrain();closeCmd();select(null);lbRender(true);if(lbStatus!=='loading')lbLoad();}
 function lbRender(fresh){
@@ -2850,11 +2866,13 @@ function lbRender(fresh){
     <div class="lb-score-big d sh">${fmt(sc.total)} <small>points</small></div>
     <div class="binfo-stats" style="justify-content:center">${parts.map(([k,v])=>`<span>${k} <b>${fmt(v)}</b></span>`).join('')}</div>
     <div class="lb-tip">Layout counts buildings walled in (${sc.protectedN} of ${sc.nonWall}) and covered by a defense (${sc.covered} of ${sc.nonWall}).</div>
+    ${p.optOut?`<div class="lb-off">You're not on the leaderboard. Tap Submit to join again.</div>`:''}
     ${flag?`<div class="lb-warn">This base used developer tools, so it's listed separately and not ranked.</div>`:''}
     <div class="lb-form"><input class="pin" id="lbName" maxlength="16" placeholder="Your name (2–16 letters)" value="${esc(nameVal)}" autocomplete="off"><button class="btn gold" data-m="submit" ${lbBusy?'disabled':''}>${lbBusy?'Sending…':'Submit'}</button></div>
     ${list}
-    <div class="mrow" style="margin-top:12px"><button class="btn plain" data-m="refresh">Refresh</button><button class="btn" data-m="close">Close</button></div></div>`;
-  if(fresh||!m.querySelector('#lbBox')){showModal(html,{close:hideModal,refresh:()=>lbLoad(),submit:()=>{const v=$('lbName').value.trim();lbPlayer().name=v;saveSoon();lbSubmit(false);}});}
+    <div class="mrow" style="margin-top:12px"><button class="btn plain" data-m="refresh">Refresh</button><button class="btn" data-m="close">Close</button></div>
+    ${p.id&&(p.submitted||(lbBoard&&[...(lbBoard.top||[]),...(lbBoard.dev||[])].some(e=>e.id===p.id)))?`<button class="lb-remove" data-m="remove">Remove me from the leaderboard</button>`:''}</div>`;
+  if(fresh||!m.querySelector('#lbBox')){showModal(html,{close:hideModal,refresh:()=>lbLoad(),remove:()=>lbRemovePrompt(),submit:()=>{const v=$('lbName').value.trim();lbPlayer().name=v;saveSoon();lbSubmit(false);}});}
   else{const box=m.querySelector('#lbBox'),focus=document.activeElement===$('lbName'),sel=focus?$('lbName').selectionStart:null;box.outerHTML=html;if(focus){const i=$('lbName');i.focus();try{i.setSelectionRange(sel,sel);}catch(e){}}}
 }
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

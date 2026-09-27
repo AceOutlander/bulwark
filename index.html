@@ -124,7 +124,8 @@ button:focus-visible{outline:3px solid #ffe07a;outline-offset:2px}
 .chip{display:flex;align-items:center;gap:3px;background:var(--panel-2);border:2px solid var(--edge);border-radius:11px;padding:2px 8px 2px 3px;font-size:13px}
 .chip b{font-family:'Lilita One',system-ui,sans-serif;font-weight:400}
 .chip .rm{color:#ff9a88;margin-left:3px;font-size:13px}
-.army-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;font-size:12.5px;color:var(--ink-dim)}
+.army-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;font-size:12.5px;color:var(--ink-dim);align-items:center}
+.army-row .lab{background:none;padding:0 4px 0 0}
 .army-row span{background:rgba(0,0,0,.2);border-radius:9px;padding:3px 8px}
 .army-row b{color:var(--ink)}
 .card .house{color:#8fd3ff;font-size:12px}
@@ -174,6 +175,24 @@ button:focus-visible{outline:3px solid #ffe07a;outline-offset:2px}
 .binfo-stats span{background:var(--panel-2);border-radius:10px;padding:5px 9px;font-size:12.5px;color:var(--ink-dim)}
 .binfo-stats b{color:var(--ink)}
 .binfo-why{color:var(--warn);font-size:13px;font-weight:800;margin:-4px 0 10px}
+.mbox{max-height:88vh;overflow:auto;-webkit-overflow-scrolling:touch}
+.lb-score-big{font-size:40px;line-height:1;margin:2px 0 8px}
+.lb-score-big small{font-size:16px;color:var(--ink-dim)}
+.lb-tip{font-size:12px;color:var(--ink-dim);font-weight:700;margin:2px 0 10px}
+.lb-warn{font-size:12.5px;color:var(--warn);font-weight:800;margin:0 0 10px}
+.lb-form{display:flex;gap:8px;margin-bottom:12px}
+.lb-form input{flex:1;margin:0;min-width:0}
+.lb-form .btn{flex:0 0 auto;min-width:96px}
+.lb-list{display:flex;flex-direction:column;gap:4px;text-align:left}
+.lb-row{display:grid;grid-template-columns:44px 1fr auto auto;gap:8px;align-items:center;background:var(--panel-2);border-radius:10px;padding:6px 9px;font-size:13.5px}
+.lb-row.me{outline:2px solid #ffd65c;background:#4a3d1c}
+.lb-rank{font-family:'Lilita One',system-ui,sans-serif;font-size:15px}
+.lb-name{font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb-meta{font-size:11.5px;color:var(--ink-dim)}
+.lb-score{font-family:'Lilita One',system-ui,sans-serif;font-size:15px;color:#ffd65c}
+.lb-note{font-size:13px;color:var(--ink-dim);font-weight:700;padding:10px;background:rgba(0,0,0,.2);border-radius:10px}
+.lb-dev{margin-top:10px;font-size:12.5px;color:var(--ink-dim);text-align:left}
+.lb-dev summary{cursor:pointer;padding:4px 0}
 .mbox .ver{font-size:12px;color:var(--ink-dim);opacity:.6;margin:12px 0 0;cursor:default;user-select:none}
 .mbox input.pin{width:100%;margin:8px 0 12px;padding:11px 12px;border-radius:12px;border:2.5px solid var(--edge);background:var(--panel-2);color:var(--ink);font:inherit;font-size:16px}
 .devtag{position:fixed;z-index:6;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 8px);background:#c0392b;color:#fff;border:2px solid #000;border-radius:9px;padding:1px 9px;font-size:12px;letter-spacing:.5px;pointer-events:none}
@@ -212,7 +231,7 @@ button:focus-visible{outline:3px solid #ffe07a;outline-offset:2px}
   <div class="pills">
     <div class="pill d sh" title="Free builders"><span class="em">🔨</span><span id="bTxt">0/0</span></div>
     <button class="pill d sh" id="armyPill" title="Defenders / housing"><span class="em">🛡️</span><span id="aTxt">0/0</span></button>
-    <div class="pill d sh" title="Trophies"><span class="em">🏆</span><span id="tTxt">0</span></div>
+    <button class="pill d sh" id="lbBtn" title="Leaderboard"><span class="em">🏆</span><span id="tTxt">0</span></button>
     <button class="pill iconbtn" id="menuBtn" aria-label="Menu">⚙️</button>
   </div>
 </div>
@@ -500,14 +519,14 @@ const occ=new Array(N*N).fill(null);
 function mk(t,x,y,lvl){return{id:S.nextId++,t,x,y,lvl:lvl||1,bu:0,bk:null,bt:0,st:0};}
 function initRt(b){b.hp=maxHp(b);b.dead=false;b.ang=b.ang!=null?b.ang:Math.PI*0.25+(b.id%4)*1.3;b.cd=0;b.tgt=null;b.recoil=0;b.hitT=0;}
 function newGame(){
-  S={gold:1500,crystal:1500,trophies:0,raidLvl:1,raidMax:1,nextId:1,last:Date.now(),b:[],seen:false,n:N,army:{},train:{q:[],t0:0},posts:{},tlvl:{},research:null};
+  S={gold:1500,crystal:1500,trophies:0,raidLvl:1,raidMax:1,nextId:1,last:Date.now(),b:[],seen:false,n:N,army:{},train:{q:[],t0:0},posts:{},tlvl:{},research:null,player:{name:'',id:'',token:''},devUsed:false};
   const c=N/2-2,L=[['hall',c,c],['hut',c-4,c-3],['hut',c+6,c-3],['goldmine',c-5,c+2],['crystalmine',c+6,c+2],['cannon',c,c+5]];
   for(const [t,x,y] of L){const b=mk(t,x,y);if(TYPES[t].rate)b.st=180;S.b.push(b);}
 }
 function save(){
   if(!S)return;
   try{
-    const d={gold:S.gold,crystal:S.crystal,trophies:S.trophies,raidLvl:S.raidLvl,raidMax:S.raidMax,nextId:S.nextId,last:Date.now(),seen:S.seen,n:N,army:S.army,train:S.train,posts:S.posts,tlvl:S.tlvl,research:S.research,
+    const d={gold:S.gold,crystal:S.crystal,trophies:S.trophies,raidLvl:S.raidLvl,raidMax:S.raidMax,nextId:S.nextId,last:Date.now(),seen:S.seen,n:N,army:S.army,train:S.train,posts:S.posts,tlvl:S.tlvl,research:S.research,player:S.player,devUsed:!!S.devUsed,
       b:S.b.map(b=>({id:b.id,t:b.t,x:b.x,y:b.y,lvl:b.lvl,bu:b.bu,bk:b.bk,bt:b.bt,st:Math.floor(b.st)}))};
     localStorage.setItem(KEY,JSON.stringify(d));
   }catch(e){}
@@ -526,6 +545,7 @@ function load(){
     d.posts=d.posts&&typeof d.posts==='object'?d.posts:{};for(const t in d.posts)if(!TROOPS[t]||!Array.isArray(d.posts[t]))delete d.posts[t];
     d.tlvl=d.tlvl&&typeof d.tlvl==='object'?d.tlvl:{};for(const t in d.tlvl)if(!TROOPS[t])delete d.tlvl[t];
     if(!d.research||!TROOPS[d.research.t])d.research=null;
+    if(!d.player||typeof d.player!=='object')d.player={name:'',id:'',token:''};d.player.name=String(d.player.name||'').slice(0,16);d.devUsed=!!d.devUsed;
     S=d;
     const el=Math.max(0,(Date.now()-(d.last||Date.now()))/1000);
     for(const b of S.b){const T=TYPES[b.t];if(T.rate&&!b.bk)b.st=Math.min(T.store[b.lvl-1],(b.st||0)+T.rate[b.lvl-1]*el);b.st=b.st||0;}
@@ -1767,6 +1787,7 @@ function endRaid(quit){
   }
   const t0=S.trophies;S.trophies=Math.max(0,S.trophies+dT);dT=S.trophies-t0;
   setTimeout(()=>snd(quit&&left>0||stars?'lose':'win'),500);
+  if(lbPlayer().name.length>=2&&lbStatus!=='offline')setTimeout(()=>lbSubmit(true),1500);
   const dg=Math.round(S.gold-g0),dc=Math.round(S.crystal-c0);
   const sg=v=>(v>=0?'+':'−')+fmt(Math.abs(v));
   const lostTxt=Object.entries(R.lost).filter(e=>e[1]>0).map(([t,n])=>`${n} ${TROOPS[t].name}${n>1?'s':''}`).join(', ');
@@ -2487,7 +2508,7 @@ function renderTrain(){
         ${groups.map(gp=>`<button class="chip" data-rm="${gp.t}"><canvas width="68" height="68" data-ti="${gp.t}"></canvas><b>×${gp.n}</b><span class="rm">✕</span></button>`).join('')}</div>`;
     }
     const army=Object.entries(S.army).filter(e=>e[1]>0);
-    if(army.length)qh+=`<div class="army-row">${army.map(([t,n])=>`<span>${TROOPS[t].name} <b>×${n}</b></span>`).join('')}</div>`;
+    if(army.length)qh+=`<div class="army-row"><span class="lab">Your army</span>${army.map(([t,n])=>`<button class="chip" data-dis="${t}" aria-label="Dismiss ${TROOPS[t].name}"><canvas width="68" height="68" data-ti="${t}"></canvas><b>×${n}</b><span class="rm">🗑</span></button>`).join('')}</div>`;
     grid=Object.entries(TROOPS).map(([t,d])=>{
       const lk=troopLocked(t),short=S.crystal<d.cost,m=troopMulT(t),l=tLvl(t);
       return `<button class="card${lk?' dim':''}" data-troop="${t}"><canvas width="240" height="172" data-tp="${t}"></canvas>
@@ -2509,7 +2530,31 @@ function updateTrainLive(){
 }
 $('trainGrid').addEventListener('click',e=>{const c=e.target.closest('[data-troop]');if(c)enqueue(c.dataset.troop);const f=e.target.closest('[data-forge]');if(f)startResearch(f.dataset.forge);});
 $('trTabs').addEventListener('click',e=>{const t=e.target.closest('[data-tt]');if(!t)return;trainTab=t.dataset.tt;document.querySelectorAll('#trTabs .tab').forEach(x=>x.classList.toggle('on',x===t));trainSig='';renderTrain();});
-$('trainQueue').addEventListener('click',e=>{const c=e.target.closest('[data-rm]');if(c)unqueue(c.dataset.rm);});
+$('trainQueue').addEventListener('click',e=>{const c=e.target.closest('[data-rm]');if(c)unqueue(c.dataset.rm);const d=e.target.closest('[data-dis]');if(d)dismissPrompt([d.dataset.dis]);});
+// dismissing soldiers: they leave for good and nothing is refunded
+function dismissTroops(type,n){
+  const list=troops.filter(t=>t.type===type&&!t.dead).slice(0,n);
+  for(const tr of list){puff(tr.x,tr.y,4,'#e8e4dc');troops.splice(troops.indexOf(tr),1);}
+  S.army[type]=Math.max(0,(S.army[type]||0)-list.length);if(!S.army[type])delete S.army[type];
+  return list.length;
+}
+function dismissPrompt(types){
+  if(raid)return;
+  types=types.filter(t=>(S.army[t]||0)>0);if(!types.length)return;
+  const tot=types.reduce((a,t)=>a+(S.army[t]||0),0),one=types.length===1?types[0]:null,d=one?TROOPS[one]:null;
+  const done=n=>{syncTroops();saveSoon();trainSig='';renderTrain();cmdSig='';renderCmd();snd('fallen');hideModal();
+    toast(`${n} soldier${n>1?'s':''} dismissed`);};
+  const nm=one?(tot>1?(one==='footman'?'Men-at-Arms':d.name+'s'):d.name):'soldiers';
+  showModal(`<h2 class="sh">Dismiss ${nm}?</h2>
+    <p>${one?`You have ${tot}.`:`${tot} soldiers selected.`} Dismissed soldiers leave for good, and you <b>won't get any crystal back</b>.</p>
+    <div class="tips" style="gap:10px">
+      ${one&&tot>1?`<button class="btn red" data-m="one">Dismiss 1</button>`:''}
+      <button class="btn red" data-m="all">Dismiss ${tot>1?'all '+tot:'it'}</button>
+      <button class="btn plain" data-m="close">Keep them</button></div>`,{
+    close:hideModal,
+    one:()=>done(dismissTroops(one,1)),
+    all:()=>{let n=0;for(const t of types)n+=dismissTroops(t,S.army[t]||0);done(n);}});
+}
 $('trainClose').addEventListener('click',closeTrain);
 $('armyPill').addEventListener('click',()=>{if(!raid)openTrain('train');});
 $('shopGrid').addEventListener('click',e=>{const c=e.target.closest('.card');if(c)showBuildInfo(c.dataset.type);});
@@ -2585,20 +2630,22 @@ function showWelcome(){
       <div><span class="em">⚔️</span><span>Press Raid to test your defenses. Hold them off to earn loot and trophies.</span></div>
     </div><div class="mrow"><button class="btn" data-m="go">Start building</button></div>`,{go:()=>{S.seen=true;save();hideModal();}});
 }
+$('lbBtn').addEventListener('click',()=>{if(!raid)openLeaderboard();});
 $('menuBtn').addEventListener('click',()=>{
   if(raid)return;
   showModal(`<h2 class="sh">Menu</h2><p>Your base saves automatically on this device.</p>
     <div class="tips" style="gap:10px">
       <button class="btn blue" data-m="center">Recenter view</button>
       <button class="btn plain" data-m="help">How to play</button>
+      <button class="btn gold" data-m="lb">Leaderboard 🏆</button>
       <div class="mrow"><button class="btn ${AUD.sfx?'':'plain'}" data-m="sfx">Sound<small>${AUD.sfx?'On':'Off'}</small></button><button class="btn ${AUD.music?'':'plain'}" data-m="music">Music<small>${AUD.music?'On':'Off'}</small></button></div>
       <button class="btn plain" data-m="gfx">Fast graphics<small>${lowGfx?'On: smoother on slower devices':'Off'}</small></button>
       <button class="btn plain" data-m="rreset">Reset raid levels</button>
       <button class="btn red" data-m="reset">Reset base</button>
       ${DEV.on?'<button class="btn plain" data-m="dev">Developer tools</button>':''}
       <button class="btn" data-m="close">Close</button></div>
-    <p class="ver" data-m="ver">Bulwark v2.3</p>`,{
-    center:()=>{centerCam();hideModal();},help:()=>showWelcome(),close:hideModal,
+    <p class="ver" data-m="ver">Bulwark v2.5</p>`,{
+    center:()=>{centerCam();hideModal();},help:()=>showWelcome(),close:hideModal,lb:()=>openLeaderboard(),
     sfx:(el)=>{AUD.sfx=!AUD.sfx;audioSave();el.className='btn '+(AUD.sfx?'':'plain');el.innerHTML=`Sound<small>${AUD.sfx?'On':'Off'}</small>`;},
     music:(el)=>{AUD.music=!AUD.music;audioSave();el.className='btn '+(AUD.music?'':'plain');el.innerHTML=`Music<small>${AUD.music?'On':'Off'}</small>`;},
     gfx:(el)=>{lowGfx=!lowGfx;try{localStorage.setItem('bulwark-gfx',lowGfx?'fast':'sharp');}catch(e){}applyRes();el.innerHTML=`Fast graphics<small>${lowGfx?'On: smoother on slower devices':'Off'}</small>`;},dev:()=>showDevTools(),
@@ -2629,7 +2676,7 @@ function renderCmd(){
   el.hidden=false;el.classList.toggle('raid',!!raid);
   const sel=cmd.sel,n=sel.size;
   const hint=!n?'Pick troops, then tap the map.':raid?'Tap the map to move them. Tap a raider to attack it.':'Tap the map to post them there. They guard that spot in raids.';
-  const acts=raid?[['charge','Charge','red'],['hold','Hold','blue'],['home','Fall back','plain']]:[['all',n&&n===types.length?'Clear':'Select all','blue'],['home','Send home','plain']];
+  const acts=raid?[['charge','Charge','red'],['hold','Hold','blue'],['home','Fall back','plain']]:[['all',n&&n===types.length?'Clear':'Select all','blue'],['home','Send home','plain'],['dismiss','Dismiss','red']];
   const sig=[raid?1:0,types.map(t=>t.join(':')).join(','),[...sel].join(','),Object.keys(S.posts).join(',')].join('|');
   if(sig===cmdSig)return;cmdSig=sig;
   el.innerHTML=`<div class="cmd-top"><div class="cmd-hint">${hint}</div><button class="x" data-c="close" aria-label="Close">✕</button></div>
@@ -2649,6 +2696,7 @@ $('cmd').addEventListener('click',e=>{
     if(raid){let i=0;for(const tr of selTroops()){const p=homePoint(tr);tr.order={k:'move',x:p[0],y:p[1]};tr.fo=formation(i++);tr.foe=null;tr.path=null;}toast('Falling back');}
     else{let any=false;for(const t of cmd.sel)if(S.posts[t]){delete S.posts[t];any=true;}saveSoon();toast(any?'Sent back to the Garrison':'They already live in the Garrison');}
   }
+  else if(k==='dismiss'){dismissPrompt([...cmd.sel]);return;}
   else if(k==='charge'){for(const tr of selTroops()){tr.order=null;tr.bad=null;tr.path=null;}toast('Charge!');}
   else if(k==='hold'){for(const tr of selTroops()){tr.order={k:'hold',x:tr.x,y:tr.y};tr.fo=[0,0];tr.foe=null;tr.path=null;}toast('Holding position');}
   cmdSig='';renderCmd();
@@ -2688,6 +2736,81 @@ function drawCommandMarks(){
     const k=o.x.toFixed(1)+','+o.y.toFixed(1);if(seen.has(k))continue;seen.add(k);postFlag(o.x,o.y,true,o.k==='move'?'#9ff07a':'#ffd65c');}}
 }
 
+// ================= global leaderboard =================
+// Scores are worked out here for display and again on the server from the submitted base, with the same formula.
+const LB_API=(()=>{try{return localStorage.getItem('bulwark-lb-api')||'https://leaderboard.hunteracedev.com';}catch(e){return 'https://leaderboard.hunteracedev.com';}})();
+const LB_VALUE={hall:320,hut:30,wall:6,cannon:120,archer:130,mortar:160,mage:170,ballista:170,flame:170,catapult:200,bell:180,bomb:40,spring:45,tar:50,
+  goldmine:60,crystalmine:60,goldvault:70,crystalvault:70,barracks:150,garrison:120,armory:120,stable:120,shrine:130};
+const LB_HOUSE={footman:1,spearman:2,crossbow:2,longbow:2,knight:3,cavalier:6,templar:5,paladin:10};
+const lbLvl=l=>1+0.35*(l-1)+0.05*(l-1)*(l-1);
+function baseSnapshot(){return{b:S.b.map(b=>[b.t,b.x,b.y,b.lvl]),army:Object.assign({},S.army),tlvl:Object.assign({},S.tlvl),trophies:S.trophies|0,raidMax:S.raidMax|0};}
+function scoreBase(base){
+  const b=base.b,hall=b.find(x=>x[0]==='hall'),hallLvl=hall?hall[3]:1;
+  let buildings=0,walls=0,defense=0;const occ=new Map(),nonWall=[],defs=[];
+  for(const [t,x,y,l] of b){const T=TYPES[t];if(!T)continue;const v=(LB_VALUE[t]||50)*lbLvl(l);
+    if(t==='wall')walls+=v;else if(T.cat==='def')defense+=v;else buildings+=v;
+    for(let j=0;j<T.size;j++)for(let i=0;i<T.size;i++)occ.set((y+j)*N+x+i,t);
+    if(t!=='wall'&&T.cat!=='trap')nonWall.push([t,x,y,l,T.size]);
+    if(T.cat==='def')defs.push([x+T.size/2,y+T.size/2,T.range]);}
+  const reach=new Uint8Array(N*N),stack=[];
+  for(let i=0;i<N;i++)for(const k of [i,i+N*(N-1),i*N,i*N+N-1])if(!reach[k]&&occ.get(k)!=='wall'){reach[k]=1;stack.push(k);}
+  while(stack.length){const k=stack.pop(),x=k%N,y=(k/N)|0;
+    for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=N||ny>=N)continue;const nk=ny*N+nx;if(reach[nk])continue;
+      const o=occ.get(nk);if(o==='wall')continue;reach[nk]=1;if(!o||TYPES[o].cat==='trap')stack.push(nk);}}
+  let protectedN=0,covered=0;
+  for(const [t,x,y,l,s] of nonWall){let hit=false;for(let j=0;j<s&&!hit;j++)for(let i=0;i<s&&!hit;i++)if(reach[(y+j)*N+x+i])hit=true;if(!hit)protectedN++;
+    const cx=x+s/2,cy=y+s/2;if(defs.some(d=>Math.hypot(d[0]-cx,d[1]-cy)<=d[2]))covered++;}
+  const structure=Math.round(protectedN*45+(nonWall.length?covered/nonWall.length:0)*300);
+  let army=0;for(const t in base.army||{}){if(!LB_HOUSE[t])continue;const n=Math.max(0,base.army[t]|0),tl=Math.max(1,Math.min(10,(base.tlvl||{})[t]|0||1));army+=n*LB_HOUSE[t]*14*(1+0.12*(tl-1));}
+  const parts={buildings:Math.round(buildings),defense:Math.round(defense),walls:Math.round(walls),structure,army:Math.round(army),trophies:Math.max(0,base.trophies|0)*3,raids:Math.max(0,Math.min(150,base.raidMax|0))*25};
+  return{total:Object.values(parts).reduce((a,v)=>a+v,0),parts,hallLvl,protectedN,covered,nonWall:nonWall.length};
+}
+function lbPlayer(){if(!S.player)S.player={name:'',id:'',token:''};return S.player;}
+function lbId(){const p=lbPlayer();if(!p.id){const r=n=>Array.from(crypto.getRandomValues(new Uint8Array(n)),b=>b.toString(16).padStart(2,'0')).join('');p.id=r(4)+'-'+r(6);p.token=r(16);saveSoon();}return p;}
+let lbBoard=null,lbStatus='idle',lbBusy=false,lbLast=null;
+async function lbFetch(path,opts){const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),8000);
+  try{const r=await fetch(LB_API+path,Object.assign({signal:ctl.signal},opts||{}));const j=await r.json();if(!r.ok&&!j.error)j.error='HTTP '+r.status;return j;}finally{clearTimeout(tm);}}
+async function lbLoad(){lbStatus='loading';lbRender();
+  try{lbBoard=await lbFetch('/top?limit=50');lbStatus=lbBoard&&Array.isArray(lbBoard.top)?'ok':'error';}catch(e){lbStatus='offline';}
+  lbRender();}
+async function lbSubmit(quiet){
+  const p=lbId(),name=p.name.trim();
+  if(name.length<2){if(!quiet)toast('Enter a name first');return;}
+  if(lbBusy)return;lbBusy=true;lbRender();
+  try{const r=await lbFetch('/submit',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:p.id,token:p.token,name,dev:!!(S.devUsed||DEV.on),base:baseSnapshot()})});
+    if(r&&r.ok){lbLast=r;if(!quiet){snd('levelup');toast(r.rank?`You're #${r.rank} with ${fmt(r.best)} points`:'Score saved');}await lbLoad();}
+    else{lbStatus='ok';if(!quiet){toast(r&&r.error?r.error:'Could not save your score');snd('error');}}
+  }catch(e){lbStatus='offline';if(!quiet)toast('Leaderboard server not reachable');}
+  lbBusy=false;lbRender();
+}
+function openLeaderboard(){if(raid)return;closeShop();closeTrain();closeCmd();select(null);lbRender(true);if(lbStatus!=='loading')lbLoad();}
+function lbRender(fresh){
+  const m=$('modal');if(!fresh&&(m.hidden||!m.querySelector('#lbBox')))return;
+  const p=lbPlayer(),sc=scoreBase(baseSnapshot()),flag=!!(S.devUsed||DEV.on),nameVal=($('lbName')?$('lbName').value:p.name)||'';
+  const parts=[['Buildings',sc.parts.buildings],['Defenses',sc.parts.defense],['Walls',sc.parts.walls],['Layout',sc.parts.structure],['Army',sc.parts.army],['Trophies',sc.parts.trophies],['Raids',sc.parts.raids]];
+  let list='';
+  if(lbStatus==='loading'&&!lbBoard)list=`<div class="lb-note">Loading the leaderboard…</div>`;
+  else if(lbStatus==='offline'||lbStatus==='error')list=`<div class="lb-note">The leaderboard server isn't reachable right now, so only your own score is shown. Try again in a moment.</div>`;
+  else if(lbBoard){
+    const rows=lbBoard.top||[],me=p.id;
+    list=rows.length?`<div class="lb-list">${rows.map((e,i)=>`<div class="lb-row${e.id===me?' me':''}"><span class="lb-rank">${i<3?['🥇','🥈','🥉'][i]:'#'+(i+1)}</span><span class="lb-name">${esc(e.name)}</span><span class="lb-meta">TH ${e.hall} · 🏆 ${fmt(e.trophies)}</span><span class="lb-score">${fmt(e.score)}</span></div>`).join('')}</div>`:`<div class="lb-note">Nobody has submitted a base yet. Be the first!</div>`;
+    if(lbBoard.dev&&lbBoard.dev.length)list+=`<details class="lb-dev"><summary>Bases that used developer tools (${lbBoard.dev.length}, not ranked)</summary><div class="lb-list">${lbBoard.dev.map(e=>`<div class="lb-row${e.id===me?' me':''}"><span class="lb-rank">🛠</span><span class="lb-name">${esc(e.name)}</span><span class="lb-meta">TH ${e.hall}</span><span class="lb-score">${fmt(e.score)}</span></div>`).join('')}</div></details>`;
+    const myRank=rows.findIndex(e=>e.id===me);
+    if(lbLast&&lbLast.rank&&myRank<0)list=`<div class="lb-note">You're #${lbLast.rank} overall.</div>`+list;
+  }
+  const html=`<div id="lbBox"><h2 class="sh">Leaderboard</h2>
+    <div class="lb-score-big d sh">${fmt(sc.total)} <small>points</small></div>
+    <div class="binfo-stats" style="justify-content:center">${parts.map(([k,v])=>`<span>${k} <b>${fmt(v)}</b></span>`).join('')}</div>
+    <div class="lb-tip">Layout counts buildings walled in (${sc.protectedN} of ${sc.nonWall}) and covered by a defense (${sc.covered} of ${sc.nonWall}).</div>
+    ${flag?`<div class="lb-warn">This base used developer tools, so it's listed separately and not ranked.</div>`:''}
+    <div class="lb-form"><input class="pin" id="lbName" maxlength="16" placeholder="Your name (2–16 letters)" value="${esc(nameVal)}" autocomplete="off"><button class="btn gold" data-m="submit" ${lbBusy?'disabled':''}>${lbBusy?'Sending…':'Submit'}</button></div>
+    ${list}
+    <div class="mrow" style="margin-top:12px"><button class="btn plain" data-m="refresh">Refresh</button><button class="btn" data-m="close">Close</button></div></div>`;
+  if(fresh||!m.querySelector('#lbBox')){showModal(html,{close:hideModal,refresh:()=>lbLoad(),submit:()=>{const v=$('lbName').value.trim();lbPlayer().name=v;saveSoon();lbSubmit(false);}});}
+  else{const box=m.querySelector('#lbBox'),focus=document.activeElement===$('lbName'),sel=focus?$('lbName').selectionStart:null;box.outerHTML=html;if(focus){const i=$('lbName');i.focus();try{i.setSelectionRange(sel,sel);}catch(e){}}}
+}
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
 // ================= developer tools (unlocked with a passcode, saved only on this device) =================
 const DEV_KEY='bulwark-dev',DEV_HASH='f6342118d77c2e8380e8d523e8f6f23aea3408c3e3bf7ad456ff235aeffcaa00',DEV_INF=999999999;
 const DEV=(()=>{try{return Object.assign({on:false,inf:false,fast:false,fps:false},JSON.parse(localStorage.getItem(DEV_KEY)||'{}'));}catch(e){return{on:false,inf:false,fast:false};}})();
@@ -2695,6 +2818,7 @@ const devInf=()=>DEV.on&&DEV.inf,devFast=()=>DEV.on&&DEV.fast;
 function devSave(){try{localStorage.setItem(DEV_KEY,JSON.stringify(DEV));}catch(e){}$('devTag').hidden=!DEV.on;}
 async function sha256(t){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
 function devTick(){
+  if(DEV.on&&!S.devUsed){S.devUsed=true;saveSoon();}
   if(devInf()){S.gold=DEV_INF;S.crystal=DEV_INF;}
   if(devFast()){for(const b of S.b)if(b.bu)finishBusy(b);if(S.train.q.length&&barracksLvl())S.train.t0=1;if(S.research)S.research.end=0;}
 }
@@ -2705,7 +2829,7 @@ function showDevUnlock(){
     close:hideModal,
     unlock:async()=>{const v=($('devPin').value||'').trim();let h='';try{h=await sha256(v);}catch(e){toast('This browser can’t check the passcode here');return;}
       if(h!==DEV_HASH){toast('Wrong passcode');$('devPin').value='';return;}
-      DEV.on=true;devSave();toast('Developer mode on');showDevTools();}});
+      DEV.on=true;S.devUsed=true;saveSoon();devSave();toast('Developer mode on');showDevTools();}});
   setTimeout(()=>{const i=$('devPin');if(i){i.focus();i.addEventListener('keydown',e=>{if(e.key==='Enter')modalHandlers.unlock();});}},50);
 }
 function showDevTools(){
@@ -2716,6 +2840,7 @@ function showDevTools(){
       ${tg('fast','Instant builds, upgrades & training',DEV.fast)}
       ${tg('fps','Show frame rate',DEV.fps)}
       <button class="btn blue" data-m="raids">Unlock all raid levels</button>
+      <button class="btn plain" data-m="lbapi">Leaderboard server<small>${LB_API}</small></button>
       <button class="btn red" data-m="lock">Turn off developer mode</button>
       <button class="btn plain" data-m="close">Close</button></div>`,{
     close:hideModal,
@@ -2723,6 +2848,9 @@ function showDevTools(){
     fast:()=>{DEV.fast=!DEV.fast;devSave();showDevTools();},
     fps:()=>{DEV.fps=!DEV.fps;devSave();showDevTools();},
     raids:()=>{S.raidMax=150;saveSoon();toast('All raid levels unlocked');},
+    lbapi:()=>{showModal(`<h2 class="sh">Leaderboard server</h2><p>The web address of your leaderboard Worker. Leave it as the default unless you set the Worker up under a different address.</p>
+      <input class="pin" id="lbApiIn" value="${esc(LB_API)}" autocomplete="off"><div class="mrow"><button class="btn plain" data-m="back">Cancel</button><button class="btn" data-m="save">Save &amp; reload</button></div>`,{
+      back:()=>showDevTools(),save:()=>{let v=($('lbApiIn').value||'').trim().replace(/\/+$/,'');try{if(v)localStorage.setItem('bulwark-lb-api',v);else localStorage.removeItem('bulwark-lb-api');}catch(e){}save();location.reload();}});},
     lock:()=>{if(DEV.inf){S.gold=cap('gold');S.crystal=cap('crystal');}DEV.on=false;DEV.inf=false;DEV.fast=false;devSave();saveSoon();hideModal();toast('Developer mode off');}});
 }
 let verTaps=0,verT=0;

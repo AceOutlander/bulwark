@@ -193,6 +193,31 @@ button:focus-visible{outline:3px solid #ffe07a;outline-offset:2px}
 .lb-note{font-size:13px;color:var(--ink-dim);font-weight:700;padding:10px;background:rgba(0,0,0,.2);border-radius:10px}
 .lb-dev{margin-top:10px;font-size:12.5px;color:var(--ink-dim);text-align:left}
 .lb-dev summary{cursor:pointer;padding:4px 0}
+/* settings */
+.mbox.set-box{padding:14px 14px 12px;text-align:left}
+.set-top{display:flex;align-items:center;justify-content:space-between;margin:0 2px 12px}
+.set-top h2{margin:0;font-size:26px;text-shadow:none;letter-spacing:.3px}
+.set-x{width:40px;height:40px;border-radius:12px;background:var(--panel-2);font-size:17px;color:var(--ink);border:2px solid rgba(255,255,255,.08)}
+.set-h{font-size:12px;font-weight:900;letter-spacing:.9px;text-transform:uppercase;color:var(--ink-dim);margin:14px 6px 6px}
+.set-sec{background:var(--panel-2);border-radius:16px;overflow:hidden;border:1.5px solid rgba(255,255,255,.06)}
+.set-row{display:flex;align-items:center;gap:12px;width:100%;min-height:56px;padding:9px 14px;text-align:left;color:var(--ink);font-family:'Nunito',system-ui,sans-serif}
+.set-row+.set-row{border-top:1.5px solid rgba(0,0,0,.28)}
+.set-row:active{background:rgba(255,255,255,.06)}
+.set-row .ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;background:rgba(0,0,0,.25);flex:none}
+.set-row .tx{flex:1;display:flex;flex-direction:column;gap:1px;min-width:0}
+.set-row .tx b{font-weight:900;font-size:15.5px;line-height:1.2}
+.set-row .tx i{font-style:normal;font-weight:700;font-size:12.5px;color:var(--ink-dim);line-height:1.3}
+.set-row .chev{font-size:22px;color:var(--ink-dim);flex:none;margin-right:-2px}
+.sw{position:relative;width:48px;height:28px;border-radius:14px;background:#5b5170;flex:none;transition:background .15s}
+.sw::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.4);transition:transform .15s}
+.sw.on{background:#46b62a}
+.sw.on::after{transform:translateX(20px)}
+.set-sec.danger{border-color:rgba(232,74,58,.35)}
+.set-row.red .tx b{color:#ff8f7d}
+.set-row.red .ic{background:rgba(232,74,58,.18)}
+.set-foot{text-align:center;margin:14px 0 2px}
+.set-foot .ver{margin:0}
+.mbox.confirm-box h2{text-shadow:none}
 .mbox .ver{font-size:12px;color:var(--ink-dim);opacity:.6;margin:12px 0 0;cursor:default;user-select:none}
 .mbox input.pin{width:100%;margin:8px 0 12px;padding:11px 12px;border-radius:12px;border:2.5px solid var(--edge);background:var(--panel-2);color:var(--ink);font:inherit;font-size:16px}
 .devtag{position:fixed;z-index:6;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 8px);background:#c0392b;color:#fff;border:2px solid #000;border-radius:9px;padding:1px 9px;font-size:12px;letter-spacing:.5px;pointer-events:none}
@@ -2616,7 +2641,7 @@ function updateHud(){
 let toastTimer=0,lastToast='',lastToastAt=0;
 function toast(m){const t=performance.now();if(m===lastToast&&t-lastToastAt<1500)return;lastToast=m;lastToastAt=t;const el=$('toast');el.textContent=m;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2000);}
 let modalHandlers={};
-function showModal(html,handlers){$('toast').classList.remove('show');modalHandlers=handlers||{};$('modal').innerHTML=`<div class="mbox" role="dialog" aria-modal="true">${html}</div>`;$('modal').hidden=false;}
+function showModal(html,handlers){$('toast').classList.remove('show');modalHandlers=handlers||{};$('modal').innerHTML=`<div class="mbox${handlers&&handlers._cls?' '+handlers._cls:''}" role="dialog" aria-modal="true">${html}</div>`;$('modal').hidden=false;}
 function hideModal(){$('modal').hidden=true;$('modal').innerHTML='';}
 $('modal').addEventListener('click',e=>{const b=e.target.closest('[data-m]');if(!b)return;const f=modalHandlers[b.dataset.m];if(f)f(b);else hideModal();});
 function showWelcome(){
@@ -2631,29 +2656,52 @@ function showWelcome(){
     </div><div class="mrow"><button class="btn" data-m="go">Start building</button></div>`,{go:()=>{S.seen=true;save();hideModal();}});
 }
 $('lbBtn').addEventListener('click',()=>{if(!raid)openLeaderboard();});
-$('menuBtn').addEventListener('click',()=>{
+function swRow(key,ic,label,sub,on){return`<button class="set-row" data-m="${key}" role="switch" aria-checked="${on}"><span class="ic">${ic}</span><span class="tx"><b>${label}</b>${sub?`<i>${sub}</i>`:''}</span><span class="sw${on?' on':''}"></span></button>`;}
+function navRow(key,ic,label,sub,cls){return`<button class="set-row${cls?' '+cls:''}" data-m="${key}"><span class="ic">${ic}</span><span class="tx"><b>${label}</b>${sub?`<i>${sub}</i>`:''}</span><span class="chev">›</span></button>`;}
+function flipSw(el,on){el.setAttribute('aria-checked',on);el.querySelector('.sw').classList.toggle('on',on);}
+function confirmBox(title,text,label,onYes){
+  showModal(`<h2 class="sh">${title}</h2><p>${text}</p>
+    <div class="tips" style="gap:10px;margin-top:14px"><button class="btn" data-m="no">Cancel</button><button class="btn red" data-m="yes">${label}</button></div>`,
+    {_cls:'confirm-box',no:()=>openSettings(),yes:onYes});
+}
+function openSettings(){
   if(raid)return;
-  showModal(`<h2 class="sh">Menu</h2><p>Your base saves automatically on this device.</p>
-    <div class="tips" style="gap:10px">
-      <button class="btn blue" data-m="center">Recenter view</button>
-      <button class="btn plain" data-m="help">How to play</button>
-      <button class="btn gold" data-m="lb">Leaderboard 🏆</button>
-      <div class="mrow"><button class="btn ${AUD.sfx?'':'plain'}" data-m="sfx">Sound<small>${AUD.sfx?'On':'Off'}</small></button><button class="btn ${AUD.music?'':'plain'}" data-m="music">Music<small>${AUD.music?'On':'Off'}</small></button></div>
-      <button class="btn plain" data-m="gfx">Fast graphics<small>${lowGfx?'On: smoother on slower devices':'Off'}</small></button>
-      <button class="btn plain" data-m="rreset">Reset raid levels</button>
-      <button class="btn red" data-m="reset">Reset base</button>
-      ${DEV.on?'<button class="btn plain" data-m="dev">Developer tools</button>':''}
-      <button class="btn" data-m="close">Close</button></div>
-    <p class="ver" data-m="ver">Bulwark v2.5</p>`,{
-    center:()=>{centerCam();hideModal();},help:()=>showWelcome(),close:hideModal,lb:()=>openLeaderboard(),
-    sfx:(el)=>{AUD.sfx=!AUD.sfx;audioSave();el.className='btn '+(AUD.sfx?'':'plain');el.innerHTML=`Sound<small>${AUD.sfx?'On':'Off'}</small>`;},
-    music:(el)=>{AUD.music=!AUD.music;audioSave();el.className='btn '+(AUD.music?'':'plain');el.innerHTML=`Music<small>${AUD.music?'On':'Off'}</small>`;},
-    gfx:(el)=>{lowGfx=!lowGfx;try{localStorage.setItem('bulwark-gfx',lowGfx?'fast':'sharp');}catch(e){}applyRes();el.innerHTML=`Fast graphics<small>${lowGfx?'On: smoother on slower devices':'Off'}</small>`;},dev:()=>showDevTools(),
+  showModal(`<div class="set-top"><h2 class="d">Settings</h2><button class="set-x" data-m="close" aria-label="Close settings">✕</button></div>
+    <div class="set-h">Game</div>
+    <div class="set-sec">
+      ${navRow('lb','🏆','Leaderboard','See how your base ranks')}
+      ${navRow('center','🎯','Recenter view','Jump back to your Town Hall')}
+      ${navRow('help','📖','How to play','')}
+    </div>
+    <div class="set-h">Sound &amp; display</div>
+    <div class="set-sec">
+      ${swRow('sfx','🔊','Sound effects','',AUD.sfx)}
+      ${swRow('music','🎵','Music','',AUD.music)}
+      ${swRow('gfx','⚡','Fast graphics','Smoother on slower devices, slightly less sharp',lowGfx)}
+    </div>
+    ${DEV.on?`<div class="set-h">Developer</div><div class="set-sec">${navRow('dev','🛠','Developer tools','Only on this device')}</div>`:''}
+    <div class="set-h" style="color:#ff8f7d">Danger zone</div>
+    <div class="set-sec danger">
+      ${navRow('rreset','↩️','Reset raid levels','Go back to raid level 1')}
+      ${navRow('reset','🗑','Reset base','Erase everything and start over','red')}
+    </div>
+    <div class="set-foot"><p class="ver" data-m="ver">Bulwark v2.6 · saved on this device</p></div>`,{
+    _cls:'set-box',
+    close:hideModal,
+    lb:()=>openLeaderboard(),
+    center:()=>{centerCam();hideModal();},
+    help:()=>showWelcome(),
+    dev:()=>showDevTools(),
+    sfx:(el)=>{AUD.sfx=!AUD.sfx;audioSave();flipSw(el,AUD.sfx);},
+    music:(el)=>{AUD.music=!AUD.music;audioSave();flipSw(el,AUD.music);},
+    gfx:(el)=>{lowGfx=!lowGfx;try{localStorage.setItem('bulwark-gfx',lowGfx?'fast':'sharp');}catch(e){}applyRes();flipSw(el,lowGfx);},
     ver:()=>{const t=performance.now();if(t-verT>4000)verTaps=0;verT=t;verTaps++;if(verTaps>=7){verTaps=0;DEV.on?showDevTools():showDevUnlock();}},
-    rreset:(el)=>{if(el.dataset.armed){S.raidMax=1;S.raidLvl=1;save();hideModal();toast('Raid levels reset to 1');}else{el.dataset.armed='1';el.innerHTML='Tap again to go back to raid Lv 1';}},
-    reset:(el)=>{if(el.dataset.armed){cancelPlace();select(null);newGame();troops=[];S.b.forEach(initRt);rebuildOcc();syncTroops();centerCam();save();hideModal();toast('Base reset');}
-      else{el.dataset.armed='1';el.innerHTML='Tap again to erase everything';}}});
-});
+    rreset:()=>confirmBox('Reset raid levels?',`You're unlocked up to raid level ${S.raidMax}. This takes you back to level 1, and you'll have to win each level again to unlock it.`,'Reset raid levels',
+      ()=>{S.raidMax=1;S.raidLvl=1;save();hideModal();toast('Raid levels reset to 1');}),
+    reset:()=>confirmBox('Erase your base?','This deletes every building, wall, troop and resource, and you start again from a small village. <b>It can\'t be undone.</b>','Erase everything',
+      ()=>{cancelPlace();select(null);newGame();troops=[];S.b.forEach(initRt);rebuildOcc();syncTroops();centerCam();save();hideModal();toast('Base reset');})});
+}
+$('menuBtn').addEventListener('click',openSettings);
 
 // ----- commanding your troops -----
 const cmd={open:false,sel:new Set()};

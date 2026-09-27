@@ -167,6 +167,13 @@ button:focus-visible{outline:3px solid #ffe07a;outline-offset:2px}
 #modal{position:fixed;inset:0;z-index:20;background:rgba(8,4,14,.6);display:flex;align-items:center;justify-content:center;padding:20px}
 .mbox{width:min(92vw,380px);background:var(--panel);border:3px solid var(--edge);border-radius:22px;padding:18px 18px 16px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.5)}
 .mbox h2{font-family:'Lilita One',system-ui,sans-serif;font-weight:400;font-size:29px;margin:2px 0 6px}
+.binfo-pic{display:block;width:100%;height:150px;margin:-4px 0 2px}
+.binfo-text{text-align:left;font-weight:700;font-size:14.5px;line-height:1.45;color:var(--ink);margin:6px 0 10px}
+.binfo-tip{text-align:left;font-weight:700;font-size:13px;line-height:1.4;color:#ffe07a;background:rgba(255,214,92,.1);border:1.5px solid rgba(255,214,92,.3);border-radius:12px;padding:8px 10px;margin:0 0 10px}
+.binfo-stats{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.binfo-stats span{background:var(--panel-2);border-radius:10px;padding:5px 9px;font-size:12.5px;color:var(--ink-dim)}
+.binfo-stats b{color:var(--ink)}
+.binfo-why{color:var(--warn);font-size:13px;font-weight:800;margin:-4px 0 10px}
 .mbox .ver{font-size:12px;color:var(--ink-dim);opacity:.6;margin:12px 0 0;cursor:default;user-select:none}
 .mbox input.pin{width:100%;margin:8px 0 12px;padding:11px 12px;border-radius:12px;border:2.5px solid var(--edge);background:var(--panel-2);color:var(--ink);font:inherit;font-size:16px}
 .devtag{position:fixed;z-index:6;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 8px);background:#c0392b;color:#fff;border:2px solid #000;border-radius:9px;padding:1px 9px;font-size:12px;letter-spacing:.5px;pointer-events:none}
@@ -2373,6 +2380,47 @@ $('sel').addEventListener('click',e=>{
 
 // shop
 const SHOP={def:['wall','cannon','archer','mortar','mage','ballista','flame','catapult','bell'],trap:['bomb','spring','tar'],army:['barracks','garrison','armory','stable','shrine'],eco:['goldmine','crystalmine','goldvault','crystalvault','hut']};
+const BINFO={
+  wall:['Stone barriers that raiders must smash through or walk around. Good walls steer raiders along longer paths, straight into your defenses.','Leave no gaps: raiders always look for the easiest way in.'],
+  cannon:['A sturdy cannon that fires heavy shots at one raider at a time. Cheap, reliable and good against tough targets.','Put a couple close to your Town Hall.'],
+  archer:['Archers fire quick volleys from high up, reaching raiders from far away.','Its long range covers the buildings your cannons can\'t reach.'],
+  mortar:['Lobs explosive shells in a high arc, blasting whole groups at once. It can\'t hit anything too close to it.','Surround it with other defenses to cover its blind spot.'],
+  mage:['A wizard hurls arcane bolts that burst on impact, hurting every raider in a small area.','Great against big crowds of Raiders and Slingers.'],
+  ballista:['A giant crossbow whose bolts fly straight through every raider in a line.','Point it down a long corridor between walls.'],
+  flame:['Sprays fire at short range, burning everything in front of it.','Put it just behind a wall, where raiders bunch up.'],
+  catapult:['Hurls boulders across most of the island and smashes groups on impact. Too clumsy to hit anything close.','Keep it in the middle of your base.'],
+  bell:['When raiders come close, its toll stuns all of them for a moment.','Pair it with a Flame Tower or Mortar for easy hits.'],
+  bomb:['A hidden explosive that blasts every raider nearby when they step close. It resets after each raid.','Hide bombs in gaps between walls.'],
+  spring:['A hidden springboard that launches small raiders straight off the island. Ogres are too heavy for it.','Place it where raiders walk, like in front of your Town Hall.'],
+  tar:['Floods the ground with sticky tar that slows every raider wading through it.','Slowed raiders spend longer inside your defenses\' range.'],
+  goldmine:['Digs up gold over time. Tap it to collect.','Upgrade it to mine faster and hold more between collections.'],
+  crystalmine:['Draws crystal from deep underground over time. Tap it to collect.','Upgrade it to drill faster and hold more between collections.'],
+  goldvault:['Stores your gold. Each vault raises how much gold you can hold at once.','You\'ll need more storage to afford the biggest upgrades.'],
+  crystalvault:['Stores your crystal. Each vault raises how much crystal you can hold at once.','You\'ll need more storage to afford the biggest upgrades.'],
+  hut:['Home of a builder. Each hut lets you build or upgrade one more thing at the same time.','More builders is the fastest way to grow your base.'],
+  barracks:['Trains your defenders, from Men-at-Arms to Paladins. Higher levels unlock stronger troops, make them tougher and train them faster.','After it\'s built, tap it to open the training screen.'],
+  garrison:['A camp of tents where your soldiers live. It sets how big your army can be, and your troops charge out from here during raids.','Build more Garrisons to fit a bigger army.'],
+  armory:['A forge that upgrades your troops\' gear. Each troop level adds 12% health and damage.','Troops can reach one level above the Armory\'s own level.'],
+  stable:['Lets you train mounted Cavaliers: fast knights whose first strike hits three times as hard.','Upgrading the Stable makes the horses faster.'],
+  shrine:['A holy place that heals your troops and slowly repairs nearby buildings during raids.','Place it where the fighting happens.'],
+};
+function showBuildInfo(t){
+  const T=TYPES[t],L=0,why=buildReason(t),c=costOf(t,1),tm=timeOf(t,1),info=BINFO[t]||[T.desc||'',''];
+  const fake={t,lvl:1,st:0,x:0,y:0,id:0};let st=statList(fake).filter(r=>!/^(Stored|Army|Builders free|Visible)/.test(r[0]));
+  if(T.store)st.push(['Holds up to',fmt(T.store[0])]);
+  st.push(['Size',T.size+'×'+T.size],['Build time',tm?fmtTime(tm):'Instant'],['You have',count(t)+' / '+limit(t)]);
+  const locked=limit(t)===0;
+  showModal(`<canvas class="binfo-pic" width="420" height="300" id="binfoPic"></canvas>
+    <h2 class="sh">${T.name}</h2>
+    <div class="binfo-text">${info[0]}</div>
+    ${info[1]?`<div class="binfo-tip">💡 ${info[1]}</div>`:''}
+    <div class="binfo-stats">${st.map(r=>`<span>${r[0]} <b>${r[1]}</b></span>`).join('')}</div>
+    ${why?`<div class="binfo-why">${why}</div>`:''}
+    <div class="mrow"><button class="btn plain" data-m="back">Back</button><button class="btn" data-m="build" ${locked?'disabled':''}>Build<small>${RI[T.res]} ${fmt(c)}</small></button></div>`,{
+    back:()=>{hideModal();},
+    build:()=>{const w=buildReason(t);if(w){toast(w);snd('error');return;}hideModal();startPlace(t);}});
+  drawThumb($('binfoPic'),t,1);
+}
 function openShop(){if(raid)return;cancelPlace();select(null);closeTrain();closeCmd();shopOpen=true;$('shop').classList.add('open');$('shop').setAttribute('aria-hidden','false');renderShop(true);}
 function closeShop(){if(!shopOpen)return;shopOpen=false;$('shop').classList.remove('open');$('shop').setAttribute('aria-hidden','true');}
 function renderShop(force){
@@ -2464,7 +2512,7 @@ $('trTabs').addEventListener('click',e=>{const t=e.target.closest('[data-tt]');i
 $('trainQueue').addEventListener('click',e=>{const c=e.target.closest('[data-rm]');if(c)unqueue(c.dataset.rm);});
 $('trainClose').addEventListener('click',closeTrain);
 $('armyPill').addEventListener('click',()=>{if(!raid)openTrain('train');});
-$('shopGrid').addEventListener('click',e=>{const c=e.target.closest('.card');if(c)startPlace(c.dataset.type);});
+$('shopGrid').addEventListener('click',e=>{const c=e.target.closest('.card');if(c)showBuildInfo(c.dataset.type);});
 $('tabs').addEventListener('click',e=>{const t=e.target.closest('.tab');if(!t)return;shopTab=t.dataset.tab;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===t));renderShop(true);});
 $('shopBtn').addEventListener('click',openShop);
 $('shopClose').addEventListener('click',closeShop);
@@ -2549,7 +2597,7 @@ $('menuBtn').addEventListener('click',()=>{
       <button class="btn red" data-m="reset">Reset base</button>
       ${DEV.on?'<button class="btn plain" data-m="dev">Developer tools</button>':''}
       <button class="btn" data-m="close">Close</button></div>
-    <p class="ver" data-m="ver">Bulwark v2.2</p>`,{
+    <p class="ver" data-m="ver">Bulwark v2.3</p>`,{
     center:()=>{centerCam();hideModal();},help:()=>showWelcome(),close:hideModal,
     sfx:(el)=>{AUD.sfx=!AUD.sfx;audioSave();el.className='btn '+(AUD.sfx?'':'plain');el.innerHTML=`Sound<small>${AUD.sfx?'On':'Off'}</small>`;},
     music:(el)=>{AUD.music=!AUD.music;audioSave();el.className='btn '+(AUD.music?'':'plain');el.innerHTML=`Music<small>${AUD.music?'On':'Off'}</small>`;},

@@ -408,7 +408,7 @@ const TYPES={
 const TROOPS={
   footman:{name:'Man-at-Arms',hp:95,dps:11,atk:0.9,speed:1.5,range:0.8,house:1,cost:40,time:5,lvl:1,size:9,desc:'Sword, shield and a crusader tabard.'},
   spearman:{name:'Spearman',hp:120,dps:12,atk:1,speed:1.45,range:1.2,house:2,cost:60,time:7,lvl:2,size:9,big:2.5,desc:'Long spear. Deals 2.5× damage to Ogres.'},
-  crossbow:{name:'Crossbowman',hp:55,dps:10,atk:1.3,speed:1.4,range:4.5,house:2,cost:70,time:8,lvl:2,size:9,desc:'Shoots bolts over walls.'},
+  crossbow:{name:'Crossbowman',hp:60,dps:20,atk:2.4,speed:1.4,range:4.5,house:2,cost:110,time:12,lvl:2,size:9,desc:'Slow to reload and shorter range than bowmen, but each heavy bolt hits far harder.'},
   longbow:{name:'Longbowman',hp:60,dps:12,atk:1.6,speed:1.4,range:6.5,house:2,cost:90,time:10,lvl:3,size:9,desc:'Out-ranges every raider.'},
   knight:{name:'Knight',hp:260,dps:20,atk:1.1,speed:1.35,range:0.85,house:3,cost:160,time:15,lvl:3,size:11,desc:'Heavy plate, great helm and longsword.'},
   cavalier:{name:'Cavalier',hp:420,dps:26,atk:1.2,speed:2.6,range:0.95,house:6,cost:320,time:24,lvl:1,stable:1,size:12,charge:3,desc:'Mounted knight. Fast, and the first strike on each foe hits 3× as hard.'},
@@ -416,6 +416,7 @@ const TROOPS={
   paladin:{name:'Paladin',hp:950,dps:38,atk:1.4,speed:1.15,range:1.05,house:10,cost:900,time:45,lvl:6,size:14,cleave:1.4,desc:'Golden champion whose hammer hits every raider around its target.'},
   // attackers: sail out with the boat, never defend, and vanish while your base is raided
   bomber:{name:'Bomber',hp:70,dps:0,atk:1,speed:2.2,range:0.8,house:2,cost:60,time:8,lvl:1,size:9,raider:true,blast:420,pref:'wall',desc:'Runs at walls and blows them open. At level 4 the bombs are twice as strong and blast a wider hole.'},
+  xbowman:{name:'Crossbowman',hp:65,dps:18,atk:2.4,speed:1.5,range:4,house:2,cost:110,time:12,lvl:2,size:9,raider:true,shot:'qbolt',desc:'Slower and shorter-ranged than Archers, but each heavy bolt hits far harder. Great against defenses behind a wall.'},
   bowman:{name:'Archer',hp:55,dps:11,atk:1.2,speed:1.6,range:5,house:2,cost:70,time:8,lvl:1,size:9,raider:true,shot:'arrow',fire:5,desc:'Shoots arrows over walls. At level 4 the arrows are set on fire and keep burning what they hit.'},
   hunter:{name:'Hunter',hp:150,dps:22,atk:0.8,speed:2.4,range:0.85,house:3,cost:140,time:14,lvl:2,size:10,raider:true,desc:'Fast and hard-hitting with a double-edged axe, but only middling health. At level 4, dropping below half health sends it berserk.'},
   tank:{name:'Tank',hp:700,dps:20,atk:1.5,speed:1.0,range:0.9,house:6,cost:400,time:30,lvl:3,size:14,raider:true,pref:'def',desc:'A heavy metal guardian that walks straight at defenses. At level 4 it enters tank mode when hurt: 7 seconds of invincibility.'},
@@ -1187,7 +1188,7 @@ function helmet(type,hx,hy,hr,dir,fl){
 }
 function troopWeapon(tr,sx,by,r,dir){
   const t=tr.swing>0?(0.25-tr.swing)/0.25:0;
-  if(tr.type==='crossbow'){const rc=tr.swing>0?-2:0,y0=by-r*0.1;line([sx,y0],[sx+dir*(r*1.5+rc),y0],'#5b3a1c',2.6);
+  if(tr.type==='crossbow'||tr.type==='xbowman'){const rc=tr.swing>0?-2:0,y0=by-r*0.1;line([sx,y0],[sx+dir*(r*1.5+rc),y0],'#5b3a1c',2.6);
     g.beginPath();g.arc(sx+dir*(r*1.25+rc),y0,r*0.55,dir>0?-1.2:Math.PI-1.2,dir>0?1.2:Math.PI+1.2);g.strokeStyle=PICK||'#3a2a1a';g.lineWidth=2;g.stroke();return;}
   if(tr.type==='hunter'){const an=-1.3+t*2.4,hx=sx+dir*r*0.85,hy=by+r*0.1,len=r*1.7,ex=hx+dir*Math.cos(an)*len,ey=hy+Math.sin(an)*len;
     line([hx,hy],[ex,ey],'#6b4a2a',3);g.save();g.translate(ex,ey);g.rotate(dir>0?an:Math.PI-an);g.beginPath();g.moveTo(0,-r*0.55);g.quadraticCurveTo(r*0.75,-r*0.5,r*0.55,0);g.quadraticCurveTo(r*0.75,r*0.5,0,r*0.55);g.quadraticCurveTo(-r*0.75,r*0.5,-r*0.55,0);g.quadraticCurveTo(-r*0.75,-r*0.5,0,-r*0.55);g.closePath();g.fillStyle=PICK||'#dfe3ea';g.fill();g.strokeStyle=PICK||'#4a4f5a';g.lineWidth=1;g.stroke();g.restore();return;}
@@ -1245,7 +1246,7 @@ function drawCavalier(tr){
   const pp=[hx+dir*Math.cos(an)*len*0.75,hyy+Math.sin(an)*len*0.75];poly([pp,[pp[0]-dir*8,pp[1]+3],[pp[0]-dir*1,pp[1]+6]],'#c0392b');
   shieldIcon(rx-dir*r*0.05,ry+r*0.28,r*0.34,'#f4f1e8','#c0392b');
 }
-const TROOP_BODY={footman:'#f4f1e8',spearman:'#7d8594',crossbow:'#8a6a45',longbow:'#6b5236',knight:'#c9ccd4',templar:'#f4f1e8',paladin:'#e7c55c',bomber:'#4a3a30',bowman:'#5a7a3a',hunter:'#a0563a',tank:'#5c6370'};
+const TROOP_BODY={footman:'#f4f1e8',spearman:'#7d8594',crossbow:'#8a6a45',longbow:'#6b5236',knight:'#c9ccd4',templar:'#f4f1e8',paladin:'#e7c55c',xbowman:'#6b5236',bomber:'#4a3a30',bowman:'#5a7a3a',hunter:'#a0563a',tank:'#5c6370'};
 // soldiers and raiders are drawn from a shared picture cache (per type, facing, pose)
 const FIG=new Map();
 function drawFigure(o,isTroop){
@@ -1272,7 +1273,7 @@ function drawTroop(tr){
   cape(tr,sx,by,r,dir);
   if(tr.type==='templar'){poly([[sx-r*0.8,by-r*0.6],[sx+r*0.8,by-r*0.6],[sx+r*0.85-dir*r*0.35,by+r*1.35],[sx-r*0.85-dir*r*0.35,by+r*1.35]],'#e9e4d6','rgba(0,0,0,.35)',1);
     g.fillStyle=PICK||'#c0392b';g.fillRect(sx-dir*r*0.75-r*0.1,by+r*0.2,r*0.2,r*0.8);g.fillRect(sx-dir*r*0.75-r*0.32,by+r*0.4,r*0.64,r*0.18);}
-  const ranged=tr.type==='crossbow'||tr.type==='longbow'||tr.type==='bowman';
+  const ranged=tr.type==='crossbow'||tr.type==='xbowman'||tr.type==='longbow'||tr.type==='bowman';
   if(tr.type==='bomber'){const bx=sx-dir*r*0.75,byy=by-r*0.15;circle(bx,byy,r*0.7,'#26262e','#000',1.2);circle(bx-2,byy-3,2.2,'#555');}
   if(tr.berserk>0&&!PICK){g.save();g.globalAlpha=0.35;ellipse(sx,by,r*1.5,r*1.5,'#ff5a45');g.restore();}
   if(tr.shield>0&&!PICK){g.save();g.globalAlpha=0.45;ellipse(sx,by,r*1.6,r*1.6,'#7fd0ff');g.restore();}
@@ -1281,6 +1282,7 @@ function drawTroop(tr){
   if(tr.type==='knight'||tr.type==='spearman'||tr.type==='paladin'){g.fillStyle=PICK||'#f4f1e8';g.fillRect(sx-r*0.55,by-r*0.7,r*1.1,r*1.45);}
   if(tr.type==='tank'){g.fillStyle=PICK||'#8f98a6';g.fillRect(sx-r*0.6,by-r*0.65,r*1.2,r*1.3);g.strokeStyle=PICK||'#2a2e38';g.lineWidth=1.5;g.strokeRect(sx-r*0.6,by-r*0.65,r*1.2,r*1.3);for(const yy of [-0.3,0.1,0.5])line([sx-r*0.6,by+r*yy],[sx+r*0.6,by+r*yy],'#2a2e38',1);}
   if(tr.type==='crossbow'){g.fillStyle=PICK||'#f4f1e8';g.fillRect(sx-r*0.45,by-r*0.7,r*0.9,r*1.35);}
+  if(tr.type==='xbowman'){g.fillStyle=PICK||'#7a2a22';g.fillRect(sx-r*0.45,by-r*0.7,r*0.9,r*1.35);}
   if(tr.type==='paladin'){g.strokeStyle=PICK||GOLD;g.lineWidth=1.6;g.strokeRect(sx-r*0.55,by-r*0.7,r*1.1,r*1.45);}
   g.fillStyle=PICK||'#c0392b';g.fillRect(sx-r*0.13,by-r*0.62,r*0.26,r*1.2);g.fillRect(sx-r*0.45,by-r*0.3,r*0.9,r*0.26);
   g.fillStyle=PICK||(tr.type==='paladin'?GOLD:'#5a3a22');g.fillRect(sx-r*0.92,by+r*0.3,r*1.84,r*0.2);
@@ -1884,7 +1886,7 @@ function scaffold(b){
 const SPR=new WeakMap();let ANIM_MS=66,sprBudget=0;
 const STILL=new Set(['wall','hut','goldvault','crystalvault','spring','bomb','cannon','mortar','ballista','catapult']);
 const AIMS=new Set(['cannon','archer','mortar','mage','ballista','catapult','flame','bell']);
-const qScale=sc=>Math.pow(2,Math.ceil(Math.log2(sc)*4)/4);
+const qScale=sc=>Math.pow(2,Math.ceil(Math.log2(sc)*8)/8);
 function sprBox(b){const T=TYPES[b.t],s=T.size,h=hOf(b),e=b.t==='dock'?5:0;return[(b.x-b.y-s-e)*HW-30,(b.x+b.y-e)*HH-h-86,(b.x-b.y+s+e)*HW+30,(b.x+b.y+2*s+e)*HH+16];}
 function drawBuildingRaw(b){
   const ghost=b.ghost,build=b.bk==='build';
@@ -2886,19 +2888,18 @@ function unqueue(t){
 let minZ=0.2,maxZ=2.2;
 // render scale drops automatically if frames get slow, and comes back when they're quick again
 let RS=1,lowGfx=(()=>{try{return localStorage.getItem('bulwark-gfx')==='fast';}catch(e){return false;}})();
-function applyRes(){
-  let d=Math.min(2,devicePixelRatio||1);if(W*H*d*d>4.2e6)d=Math.max(1,Math.sqrt(4.2e6/(W*H)));
+function applyRes(){RS=1;
+  let d=Math.min(2,devicePixelRatio||1);if(W*H*d*d>9.5e6)d=Math.max(1,Math.sqrt(9.5e6/(W*H)));
   DPR=Math.max(0.5,d*RS*(lowGfx?0.7:1));
   cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);layer.width=cv.width;layer.height=cv.height;
+  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
 }
 let ftAvg=16,ftCheck=0,ftGood=0,fpsShow=0,fpsN=0,fpsT=0;
 function perfTick(fd){
   if(fd>250)return;ftAvg=ftAvg*0.92+fd*0.08;fpsN++;
   if(now-fpsT>1000){fpsShow=Math.round(fpsN*1000/(now-fpsT));fpsN=0;fpsT=now;}
   ftCheck+=fd;if(ftCheck<1200)return;ftCheck=0;
-  if(ftAvg>26&&RS>0.6){RS=Math.round((RS-0.1)*10)/10;ftGood=0;applyRes();}
-  else if(ftAvg<17.5&&RS<1){if(++ftGood>=3){RS=Math.round((RS+0.1)*10)/10;ftGood=0;applyRes();}}
-  else ftGood=0;
+  // (resolution used to drop automatically when frames were slow, which made the game go blurry; now it stays sharp)
 }
 function resize(){
   W=innerWidth;H=innerHeight;applyRes();
@@ -3696,7 +3697,7 @@ function openSettings(){
       ${navRow('rreset','↩️','Reset raid levels','Go back to raid level 1')}
       ${navRow('reset','🗑','Reset base','Erase everything and start over','red')}
     </div>
-    <div class="set-foot"><p class="ver" data-m="ver">Bulwark v4.5 · saved on this device</p></div>`,{
+    <div class="set-foot"><p class="ver" data-m="ver">Bulwark v4.7 · saved on this device</p></div>`,{
     _cls:'set-box',
     close:hideModal,
     lb:()=>openLeaderboard(),
@@ -3807,7 +3808,7 @@ function drawCommandMarks(){
 const LB_API=(()=>{try{return localStorage.getItem('bulwark-lb-api')||'https://leaderboard.hunteracedev.com';}catch(e){return 'https://leaderboard.hunteracedev.com';}})();
 const LB_VALUE={hall:320,hut:30,wall:6,cannon:120,archer:130,mortar:160,mage:170,ballista:170,flame:170,catapult:200,bell:180,bomb:40,spring:45,tar:50,
   goldmine:60,crystalmine:60,goldvault:70,crystalvault:70,barracks:150,garrison:120,armory:120,stable:120,shrine:130,dock:110};
-const LB_HOUSE={footman:1,spearman:2,crossbow:2,longbow:2,knight:3,cavalier:6,templar:5,paladin:10,bomber:2,bowman:2,hunter:3,tank:6};
+const LB_HOUSE={footman:1,spearman:2,crossbow:2,longbow:2,knight:3,cavalier:6,templar:5,paladin:10,bomber:2,bowman:2,xbowman:2,hunter:3,tank:6};
 const lbLvl=l=>1+0.35*(l-1)+0.05*(l-1)*(l-1);
 function baseSnapshot(){return{b:S.b.filter(b=>TYPES[b.t].cat!=='onyx').map(b=>[b.t,b.x,b.y,b.lvl]),army:Object.assign({},S.army),tlvl:Object.assign({},S.tlvl),trophies:S.trophies|0,raidMax:S.raidMax|0};}
 function scoreBase(base){

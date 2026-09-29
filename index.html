@@ -444,6 +444,8 @@ const MAXB=10,MAXT=8,RAID_HP=1.045,RAID_DMG=1.035,RAID_K=13;
 const HG={hall:8,archer:4,crystalvault:8,crystalmine:4,cannon:2,mortar:2,goldmine:3,goldvault:2,wall:2,mage:6,ballista:1,flame:4,barracks:4,garrison:3,catapult:3,bell:6,shrine:4,armory:3,stable:3,dock:2};
 const hOf=b=>TYPES[b.t].h+(b.lvl-1)*(HG[b.t]||0);
 const WALLC=['#b08457','#9ea4ad','#9ea4ad','#9aa0a8','#9aa0a8','#8f95a0','#8f95a0','#8a909b','#7d838f','#7d838f'];
+// each wall level keeps its old signature colour, blended about halfway into stone so it isn't too loud
+const WALL_OLD=['#b08457','#9ea4ad','#d9ab34','#8a63e0','#454a66','#6f8fc7','#3f9a78','#b23a48','#3a2f52','#f0d98a'];
 const EN={
   raider:{name:'Raider',hp:40,dps:9,atk:1,speed:1.5,range:0.75,cost:1,size:11,body:'#d94b3a',trim:'#6e1b10'},
   slinger:{name:'Slinger',hp:24,dps:7,atk:1.1,speed:1.6,range:3.5,cost:1,size:10,body:'#e9b640',trim:'#7d5210'},
@@ -1455,7 +1457,7 @@ Object.assign(DRAW,{
     g.beginPath();g.moveTo(fx,fy-22);g.quadraticCurveTo(fx+9,fy-25+w,fx+18,fy-20+w);g.lineTo(fx+18,fy-10+w);g.quadraticCurveTo(fx+9,fy-15+w,fx,fy-12);g.closePath();g.fillStyle=col(L>=1?acc:'#ffd23f');g.fill();g.strokeStyle=col('rgba(0,0,0,.35)');g.lineWidth=1;g.stroke();
   },
   wall(b){
-    const x=b.x,y=b.y,L=b.lvl-1,c=L>=2?mix(WALLC[L],accOf(L),0.06):WALLC[L],hgt=[18,21,23,25,27,28,29,30,31,32][L],hc=hgt-6;
+    const x=b.x,y=b.y,L=b.lvl-1,c=L>=2?mix(WALLC[L],WALL_OLD[L],0.45):WALLC[L],hgt=[18,21,23,25,27,28,29,30,31,32][L],hc=hgt-6;
     const cx=b.conn?b.conn[0]:wallLive(x+1,y),cy=b.conn?b.conn[1]:wallLive(x,y+1);
     if(L===0){ // wooden palisade stakes
       box(x+0.26,y+0.26,0.48,0.48,0,hgt,c);pyramid(x+0.26,y+0.26,0.48,0.48,hgt,hgt+9,shade(c,0.06));
@@ -1526,11 +1528,11 @@ Object.assign(DRAW,{
     if(s===0)for(let i=0;i<(o?9:7);i++){const an=Math.PI*0.1+i*(Math.PI*0.8/6),q=P(cx+Math.cos(an)*1.05,cy+Math.sin(an)*1.05,11);ellipse(q[0],q[1],7,4.5,'#c9b48a','rgba(0,0,0,.3)',1);}
     if(s>=1)for(let i=0;i<8;i++){const an=i*TAU/8+0.39,bx=cx+Math.cos(an)*1.02-0.14,by=cy+Math.sin(an)*1.02-0.14;box(bx,by,0.28,0.28,s>=2?14:10,s>=2?21:16,shade(M.stone2,0.12));if(o||s>=3)box(bx+0.03,by+0.03,0.22,0.22,s>=2?21:16,s>=2?23:18,tr);}
     if(s>=2){for(let i=0;i<5;i++){const q=P(cx-0.7+(i%3)*0.22,cy+0.75-Math.floor(i/3)*0.2,14+Math.floor(i/3)*7);circle(q[0],q[1],5,'#2a2a30','#000',1);}}
-    if(s>=4){box(x+0.25,y+0.25,2.5,0.25,0,26,M.iron);box(x+0.25,y+0.25,0.25,2.5,0,26,M.iron);box(x+0.25,y+2.5,2.5,0.25,0,18,M.iron);box(x+2.5,y+0.25,0.25,2.5,0,18,M.iron);
-      for(const [ox,oy] of [[0.7,2.62],[1.5,2.62],[2.3,2.62],[2.62,0.7],[2.62,1.5],[2.62,2.3]]){const p=P(x+ox,y+oy,9);stud(p[0],p[1],2.4,tr);}}
-    const a=b.ang,rc=(b.recoil||0),base=P(cx,cy,s>=2?14:12),tubes=s>=3?[[-0.32,0.18],[0.32,-0.18]]:[[0,0]];
-    for(const [ox,oy] of tubes){const bs=P(cx+ox*Math.sin(a+Math.PI/2)*1.0+ox,cy+oy,s>=2?14:12),top=P(cx+ox+Math.cos(a)*0.28,cy+oy+Math.sin(a)*0.28,36-rc*5),tw=20;
-      line(bs,top,'#15171b',tw+4);line(bs,top,'#3a3e46',tw);const m1=[bs[0]+(top[0]-bs[0])*0.55,bs[1]+(top[1]-bs[1])*0.55],m2=[bs[0]+(top[0]-bs[0])*0.65,bs[1]+(top[1]-bs[1])*0.65];if(s>=1)line(m1,m2,tr,tw);
+    if(s>=4){for(let i=0;i<10;i++){const an=i*TAU/10,q=P(cx+Math.cos(an)*1.3,cy+Math.sin(an)*1.3,2);if(Math.sin(an)+Math.cos(an)<-0.2)continue;ellipse(q[0],q[1],7,4.5,'#c9b48a','rgba(0,0,0,.3)',1);}
+      hoop(cx,cy,1.2,12,tr,3);for(const [ox,oy] of [[0.3,2.7],[2.7,0.3]]){const p=P(x+ox,y+oy);banner(p[0],p[1],34,L>=8);}}
+    const a=b.ang,rc=(b.recoil||0),base=P(cx,cy,s>=2?14:12),tubes=[[0,0]];
+    for(const [ox,oy] of tubes){const bs=P(cx,cy,s>=2?14:12),top=P(cx+Math.cos(a)*0.28,cy+Math.sin(a)*0.28,36+s*3-rc*5),tw=20+s*2.5;
+      line(bs,top,'#15171b',tw+4);line(bs,top,'#3a3e46',tw);const band=(t)=>line([bs[0]+(top[0]-bs[0])*t,bs[1]+(top[1]-bs[1])*t],[bs[0]+(top[0]-bs[0])*(t+0.09),bs[1]+(top[1]-bs[1])*(t+0.09)],tr,tw);if(s>=1)band(0.55);if(s>=3)band(0.25);if(s>=4)band(0.8);
       ellipse(top[0],top[1],tw*0.55,tw*0.3,shade('#3a3e46',0.2),'#15171b',1.5);ellipse(top[0],top[1],tw*0.35,tw*0.19,'#0c0d10');}
   },
   mage(b){
@@ -3227,7 +3229,7 @@ function openSettings(){
       ${navRow('rreset','↩️','Reset raid levels','Go back to raid level 1')}
       ${navRow('reset','🗑','Reset base','Erase everything and start over','red')}
     </div>
-    <div class="set-foot"><p class="ver" data-m="ver">Bulwark v3.5 · saved on this device</p></div>`,{
+    <div class="set-foot"><p class="ver" data-m="ver">Bulwark v3.8 · saved on this device</p></div>`,{
     _cls:'set-box',
     close:hideModal,
     lb:()=>openLeaderboard(),

@@ -2307,6 +2307,8 @@ function updateTroopRaid(tr,dt){
   if(o&&o.k==='hold'){ax=o.x;ay=o.y;reach=Math.max(4.5,tr.range+1.5);}
   else if(o&&o.k==='move')reach=Math.max(1.4,tr.range+0.3);
   if(o&&o.k==='atk'){if(tr.foe!==o.u){tr.foe=o.u;tr.path=null;tr.fresh=true;}}
+  // a move or fall-back order is obeyed no matter who is fighting them: they stop attacking and go
+  else if(o&&o.k==='move'){if(tr.foe){tr.foe=null;tr.path=null;}}
   else{
     tr.scan-=dt;
     if(tr.scan<=0){tr.scan=0.4;if(Math.random()<0.05)tr.bad=null;
@@ -3697,7 +3699,7 @@ function openSettings(){
       ${navRow('rreset','↩️','Reset raid levels','Go back to raid level 1')}
       ${navRow('reset','🗑','Reset base','Erase everything and start over','red')}
     </div>
-    <div class="set-foot"><p class="ver" data-m="ver">Bulwark v4.7 · saved on this device</p></div>`,{
+    <div class="set-foot"><p class="ver" data-m="ver">Bulwark v4.8 · saved on this device</p></div>`,{
     _cls:'set-box',
     close:hideModal,
     lb:()=>openLeaderboard(),
